@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Liberar espaço em disco
         # o runner tem ~14 GB livres; removemos SDKs que o pipeline não usa
@@ -34,7 +34,7 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           df -h /
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
 
@@ -54,30 +54,30 @@ jobs:
         run: uv run capes site
 
       - name: Guardar o SQLite publicado
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: capes_kb-sqlite
           path: data/capes_kb.sqlite
           retention-days: 90
 
       - name: Guardar manifests (checksums das fontes)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: manifests
           path: data/manifest/
 
       - name: Guardar o site renderizado
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: site
           path: site/_site
           retention-days: 90
 
       - if: vars.PUBLICAR_PAGES == 'true'
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - if: vars.PUBLICAR_PAGES == 'true'
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: site/_site
 
@@ -90,4 +90,4 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

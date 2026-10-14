@@ -70,6 +70,23 @@ models:
           arguments:
             combination_of_columns: [ano, defesas_orientadas]
 
+  - name: mart_palavras_chave_top
+    description: Top 30 palavras-chave por ano e grande área (TODAS = sistema).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [ano, grande_area, chave]
+
+  - name: mart_palavras_chave_tendencia
+    description: Uso de cada palavra-chave por quadriênio, por 10 mil trabalhos (termos com ≥ 150 usos).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [periodo, chave]
+
+  - name: mart_teses_expectativa
+    description: Expectativa de atuação declarada pelos titulados, por ano e nível.
+
   - name: mart_titulacao_meses
     description: Histograma de meses até a titulação (ano × nível × grande área; 120 = 120 ou mais).
     tests:

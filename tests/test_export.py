@@ -28,6 +28,11 @@ def duck(tmp_path):
         create table mart_docentes_idade as select 2024 as ano, true as permanente, 'até 39' as faixa_idade, 3 as n_pessoas;
         create table mart_docentes_formacao as select 2024 as ano, 'BRASIL' as pais_titulacao, 'USP' as sg_ies_titulacao, 9 as n_pessoas;
         create table mart_orientacoes_por_orientador as select 2024 as ano, 1 as defesas_orientadas, 7 as n_orientadores, 7 as n_trabalhos;
+        create table fct_teses_programa_ano as select 2024 as ano, '10001018002P1' as cd_programa, 'MESTRADO' as nivel, 3 as n_trabalhos;
+        create table mart_palavras_chave_top as select 2024 as ano, 'TODAS' as grande_area, 'educacao' as chave, 'educação' as forma, 9 as n_trabalhos;
+        create table mart_palavras_chave_tendencia as select '2021–2024' as periodo, 'educacao' as chave, 'educação' as forma,
+            9 as n_trabalhos, 100 as trabalhos_periodo, 900.0 as por_10_mil;
+        create table mart_teses_expectativa as select 2024 as ano, 'DOUTORADO' as nivel, 'PESQUISA' as expectativa, 4 as n;
     """)
     con.close()
     return path

@@ -30,6 +30,10 @@ TABELAS = {
     "docentes_idade": "select * from mart_docentes_idade order by ano, permanente, faixa_idade",
     "docentes_formacao": "select * from mart_docentes_formacao order by ano, pais_titulacao, sg_ies_titulacao",
     "orientacoes_por_orientador": "select * from mart_orientacoes_por_orientador order by ano, defesas_orientadas",
+    "teses_programa_ano": "select * from fct_teses_programa_ano order by cd_programa, nivel, ano",
+    "palavras_chave_top": "select * from mart_palavras_chave_top order by ano, grande_area, n_trabalhos desc, chave",
+    "palavras_chave_tendencia": "select * from mart_palavras_chave_tendencia order by chave, periodo",
+    "teses_expectativa": "select * from mart_teses_expectativa order by ano, nivel, expectativa",
 }
 
 INDICES = {

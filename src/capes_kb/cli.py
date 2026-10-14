@@ -14,6 +14,7 @@
 import argparse
 import logging
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -67,6 +68,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("comando", choices=["ingest", "bronze", "perfil", "all", "transform", "export", "site"])
     parser.add_argument("datasets", nargs="*", help="datasets de config/datasets.yml (padrão: todos)")
     parser.add_argument("--forcar", action="store_true", help="refaz mesmo sem mudanças")
+    parser.add_argument("--limpar-raw", action="store_true",
+                        help="apaga os CSVs de cada dataset após convertê-los (CI: limita o pico de disco)")
     parser.add_argument("-v", "--verbose", action="store_true")
     argv = sys.argv[1:] if argv is None else argv
     args_extra = argv[argv.index("--") + 1 :] if "--" in argv else []
@@ -99,6 +102,9 @@ def main(argv: list[str] | None = None) -> int:
             ingest.ingerir(cfg, nome, forcar=args.forcar)
         if args.comando in ("bronze", "all"):
             bronze.converter(cfg, nome, forcar=args.forcar)
+            if args.limpar_raw:
+                shutil.rmtree(config.RAW_DIR / nome, ignore_errors=True)
+                logging.info("[%s] CSVs removidos (--limpar-raw)", nome)
         if args.comando in ("perfil", "all"):
             _imprimir_perfil(nome)
     return 0

@@ -43,3 +43,16 @@ uv run pytest                     # testes unitários (offline)
 ```
 
 Datasets e períodos ficam em [config/datasets.yml](config/datasets.yml).
+
+## Publicação (GitHub Actions + Pages)
+
+| Workflow | Quando roda | O que faz |
+|---|---|---|
+| [`ci.yml`](.github/workflows/ci.yml) | cada PR e push em `main` | testes (pytest) e `dbt parse` — sem baixar dados |
+| [`publicar.yml`](.github/workflows/publicar.yml) | dia 5 de cada mês e sob demanda | pipeline completo (~7 GB do portal), `dbt build`, export, Quarto e deploy no GitHub Pages |
+
+O SQLite publicado e os manifests de cada execução ficam como artefatos do workflow (90 dias).
+No runner, os CSVs de cada dataset são apagados logo após virar Parquet (`capes all --limpar-raw`).
+
+Configuração única no repositório: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+Para publicar fora do calendário: **Actions → Publicar → Run workflow**.

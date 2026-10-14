@@ -1,0 +1,38 @@
+# Verificações rápidas a cada PR e push: testes Python e validação do projeto dbt.
+# Não baixa dados do portal (isso fica no workflow mensal).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Instalar dependências
+        run: uv sync --locked
+
+      - name: Testes (pytest)
+        run: uv run pytest -q
+
+      - name: Validar projeto dbt (sem dados)
+        # a CLI injeta os caminhos de data/; `parse` compila todos os modelos e testes sem consultar dados
+        run: |
+          uv run python -c "from capes_kb.indicadores import gerar_seed; gerar_seed()"
+          uv run capes transform -- parse

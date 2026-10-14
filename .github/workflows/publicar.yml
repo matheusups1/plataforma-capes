@@ -1,0 +1,79 @@
+# Pipeline completo + publicação no GitHub Pages.
+# Roda todo dia 5 (o portal da CAPES atualiza poucas vezes por ano) e sob demanda.
+# Baixa ~7 GB do portal; os CSVs de cada dataset são apagados após virar Parquet.
+name: Publicar
+
+on:
+  schedule:
+    - cron: "0 6 5 * *"   # dia 5 de cada mês, 06:00 UTC (03:00 em Brasília)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: publicar
+  cancel-in-progress: false
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Liberar espaço em disco
+        # o runner tem ~14 GB livres; removemos SDKs que o pipeline não usa
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Instalar dependências
+        run: uv sync --locked
+
+      - name: Ingestão e conversão (raw → bronze)
+        run: uv run capes all --limpar-raw
+
+      - name: Transformação e testes de dados (dbt build)
+        run: uv run capes transform
+
+      - name: Exportar SQLite
+        run: uv run capes export
+
+      - name: Renderizar site (Quarto)
+        run: uv run capes site
+
+      - name: Guardar o SQLite publicado
+        uses: actions/upload-artifact@v4
+        with:
+          name: capes_kb-sqlite
+          path: data/capes_kb.sqlite
+          retention-days: 90
+
+      - name: Guardar manifests (checksums das fontes)
+        uses: actions/upload-artifact@v4
+        with:
+          name: manifests
+          path: data/manifest/
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/_site
+
+  deploy:
+    needs: pipeline
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,62 @@
+# Fontes do núcleo da pós-graduação stricto sensu (MVP).
+# Cada dataset lógico agrega os pacotes CKAN de cada período de coleta;
+# os nomes/colunas mudam entre períodos e são harmonizados no staging (dbt).
+#
+# Campos:
+#   packages : ids (slugs) dos pacotes em dadosabertos.capes.gov.br
+#   anos     : intervalo de anos-base a ingerir [inicio, fim]
+#   csv      : parâmetros de leitura dos CSVs (iguais em todo o portal até agora)
+#   modulo   : módulo da base de conhecimento que consome o dataset
+
+defaults:
+  ckan_url: https://dadosabertos.capes.gov.br
+  csv:
+    delim: ";"
+    encoding: cp1252  # portal declara latin-1, mas há arquivos com – e ’ (cp1252)
+    header: true
+
+datasets:
+  programas:
+    descricao: Programas de pós-graduação stricto sensu (1 linha por programa × ano-base)
+    modulo: 02-programas-e-avaliacao
+    anos: [2013, 2024]
+    packages:
+      - programas-da-pos-graduacao-stricto-census-do-brasil-de-2013-a-2015
+      - 2017-a-2020-programas-da-pos-graduacao-stricto-sensu-no-brasil
+      - 2021-a-2024-programas-da-pos-graduacao-stricto-sensu-no-brasil
+
+  cursos:
+    descricao: Cursos (mestrado/doutorado) vinculados aos programas
+    modulo: 01-sistema-pos-graduacao
+    anos: [2013, 2024]
+    packages:
+      - cursos-da-pos-graduacao-stricto-sensu-do-brasil-de-2013-a-2015
+      - 2017-a-2020-cursos-da-pos-graduacao-stricto-sensu-no-brasil
+      - 2021-a-2024-cursos-da-pos-graduacao-stricto-sensu-no-brasil
+
+  docentes:
+    descricao: Docentes vinculados aos programas (contém dados pessoais — nunca exportar microdado)
+    modulo: 03-docentes
+    anos: [2013, 2024]
+    packages:
+      - docentes-da-pos-graduacao-stricto-sensu-do-brasil-2013-a-2016
+      - 2017-a-2020-docentes-da-pos-graduacao-stricto-sensu-no-brasil
+      - 2021-a-2024-docentes-da-pos-graduacao-stricto-sensu-no-brasil
+
+  discentes:
+    descricao: Discentes matriculados/titulados/desligados (contém dados pessoais — nunca exportar microdado)
+    modulo: 04-discentes-e-titulacao
+    anos: [2013, 2024]
+    packages:
+      - discentes-da-pos-graduacao-stricto-sensu-do-brasil-2013-a-2016
+      - discentes-da-pos-graduacao-stricto-sensu-do-brasil-2017-a-2019
+      - 2021-a-2024-discentes-da-pos-graduacao-stricto-sensu-do-brasil
+
+  teses:
+    descricao: Catálogo de teses e dissertações defendidas
+    modulo: 05-teses-e-dissertacoes
+    anos: [2013, 2024]
+    packages:
+      - catalogo-de-teses-e-dissertacoes-de-2013-a-2016
+      - 2017-2020-catalogo-de-teses-e-dissertacoes-da-capes
+      - 2021-a-2024-catalogo-de-teses-e-dissertacoes-brasil

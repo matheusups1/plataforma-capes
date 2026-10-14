@@ -1,0 +1,271 @@
+---
+title: "Discentes e titulação"
+subtitle: "Quem entra, quem se titula, quem sai e quanto tempo leva até o diploma."
+---
+
+```{python}
+import kb
+import graficos as g
+
+MODULO = "04-discentes-e-titulacao"
+ANO = kb.consulta("select max(ano) as a from discentes_programa_ano")[0]["a"]
+ANO0 = kb.consulta("select min(ano) as a from discentes_programa_ano")[0]["a"]
+pct = lambda v: kb.fmt(v, "percentual")
+num = lambda v: kb.fmt(v, "contagem")
+meses = lambda v: kb.fmt(v, "meses")
+
+NIVEIS = [("MESTRADO", "Mestrado acadêmico"), ("DOUTORADO", "Doutorado acadêmico"),
+          ("MESTRADO PROFISSIONAL", "Mestrado profissional"), ("DOUTORADO PROFISSIONAL", "Doutorado profissional")]
+PRAZO = {"MESTRADO": 24, "DOUTORADO": 48}
+
+def por_nivel(coluna):
+    """{nivel: [(ano, soma da coluna)]} a partir do fato programa × nível × ano."""
+    rows = kb.consulta(f"select nivel, ano, sum({coluna}) as v from discentes_programa_ano group by nivel, ano order by ano")
+    out = {n: [] for n, _ in NIVEIS}
+    for r in rows:
+        out[r["nivel"]].append((r["ano"], r["v"]))
+    return out
+
+def percentis(nivel, ano, qs=(0.25, 0.5, 0.75, 0.9)):
+    """Percentis exatos a partir do histograma de meses (soma das grandes áreas)."""
+    rows = kb.consulta("select meses, sum(n) as n from titulacao_meses where nivel = ? and ano = ? group by meses order by meses",
+                       nivel, ano)
+    total = sum(r["n"] for r in rows)
+    res, acum, i = [], 0, 0
+    for q in qs:
+        while acum + rows[i]["n"] < q * total:
+            acum += rows[i]["n"]
+            i += 1
+        res.append(rows[i]["meses"])
+    return res
+```
+
+## Conceitos
+
+A cada ano-base, todo discente vinculado a um programa tem uma **situação** ao fim do ano:
+segue *matriculado*, *titulou-se*, foi *desligado*, *abandonou* ou *mudou de nível sem
+defesa* (passou do mestrado direto ao doutorado). Quem ingressou naquele ano é contado
+como **ingressante**. Com isso é possível medir o fluxo anual de entrada e saída e o
+**tempo de titulação**, os meses entre a matrícula e a defesa.
+
+A duração de referência é de **24 meses no mestrado e 48 no doutorado**, a mesma das bolsas
+da CAPES. Os indicadores de prazo usam essa régua. Termos destacados estão no
+[glossário](../../glossario.qmd).
+
+## Indicadores do módulo
+
+```{python}
+#| output: asis
+print(kb.grade_tiles(kb.indicadores(MODULO), link_catalogo="../../indicadores.html"))
+```
+
+Definições, fórmulas e limitações no [catálogo de indicadores](../../indicadores.qmd#mod-04-discentes-e-titulacao).
+
+## Exploração dos dados
+
+### Quem entra: a expansão veio do mestrado profissional
+
+```{python}
+#| output: asis
+ing = por_nivel("n_ingressantes")
+print("\n**Ingressantes por nível**\n")
+print(g.linhas([(rot, ing[n]) for n, rot in NIVEIS], "contagem", rotulo="Ingressantes por nível"))
+print(g.tabela(["Nível"] + [str(a) for a, _ in ing["MESTRADO"]],
+               [[rot] + [num(v) for _, v in ing[n]] for n, rot in NIVEIS], resumo="Ver ingressantes por nível e ano"))
+var = lambda serie: 100 * (serie[-1][1] / serie[0][1] - 1)
+dp = ing["DOUTORADO PROFISSIONAL"]
+print(f"""
+<div class="kb-insight">
+De {ANO0} a {ANO} o ingresso no <strong>mestrado profissional cresceu {pct(var(ing["MESTRADO PROFISSIONAL"]))}</strong>,
+de {num(ing["MESTRADO PROFISSIONAL"][0][1])} para {num(ing["MESTRADO PROFISSIONAL"][-1][1])}. No mestrado acadêmico a alta foi de
+{pct(var(ing["MESTRADO"]))}, e no doutorado acadêmico, de {pct(var(ing["DOUTORADO"]))}. O doutorado profissional,
+criado em 2017, tem dados desde {dp[0][0]} e já recebe {num(dp[-1][1])} ingressantes por ano.
+</div>
+""")
+```
+
+### Quem sai sem diploma, e o efeito da pandemia
+
+```{python}
+#| output: asis
+rows = kb.consulta("""
+    select nivel, ano, 100.0 * sum(n_desligados) / sum(n_vinculos) as taxa
+    from discentes_programa_ano where nivel in ('MESTRADO', 'DOUTORADO', 'MESTRADO PROFISSIONAL')
+    group by nivel, ano order by ano
+""")
+desl = {n: [(r["ano"], r["taxa"]) for r in rows if r["nivel"] == n] for n, _ in NIVEIS[:3]}
+print("\n**Taxa anual de desligamento (% dos discentes vinculados no ano)**\n")
+print(g.linhas([(rot, desl[n]) for n, rot in NIVEIS[:3]], "percentual", rotulo="Taxa anual de desligamento por nível"))
+print(g.tabela(["Nível"] + [str(a) for a, _ in desl["MESTRADO"]],
+               [[rot] + [pct(v) for _, v in desl[n]] for n, rot in NIVEIS[:3]], resumo="Ver taxas por nível e ano"))
+tit = kb.serie("disc_titulados")
+t = dict(tit)
+d_do = dict(desl["DOUTORADO"])
+anos_mp_maior = sum(1 for (a, mp), (_, me) in zip(desl["MESTRADO PROFISSIONAL"], desl["MESTRADO"]) if mp > me)
+print(f"""
+<div class="kb-insight">
+Em <strong>2020</strong> os titulados caíram para {num(t[2020])}, ante {num(t[2019])} em 2019
+({pct(100 * (t[2020] / t[2019] - 1))}). Ao mesmo tempo o desligamento chegou ao menor nível da série
+(no doutorado, {pct(d_do[2020])}). Com prazos prorrogados, menos gente defendeu e menos gente saiu.
+Em 2021 os dois números voltaram a subir. O mestrado profissional teve desligamento maior que o do acadêmico
+em {anos_mp_maior} dos {len(desl["MESTRADO"])} anos.
+</div>
+""")
+```
+
+### Quanto tempo leva: cada vez menos gente termina no prazo
+
+```{python}
+#| output: asis
+def distribuicao(nivel, ano):
+    rows = kb.consulta("select meses, sum(n) as n from titulacao_meses where nivel = ? and ano = ? group by meses order by meses",
+                       nivel, ano)
+    total = sum(r["n"] for r in rows)
+    return [(r["meses"], 100 * r["n"] / total) for r in rows if 24 <= r["meses"] <= 96]
+
+print(f"\n**Doutores titulados por mês de duração do curso (% dos titulados do ano, de 24 a 96 meses)**\n")
+print(g.linhas([(str(ANO0), distribuicao("DOUTORADO", ANO0)), (str(ANO), distribuicao("DOUTORADO", ANO))],
+               "percentual", rotulo="Distribuição do tempo de titulação no doutorado",
+               x_marcas=[24, 36, 48, 60, 72, 84, 96], x_sufixo=" meses", valor_no_rotulo=False))
+def faixa_pct(nivel, ano, meses_):
+    rows = kb.consulta("select meses, sum(n) as n from titulacao_meses where nivel = ? and ano = ? group by meses", nivel, ano)
+    total = sum(r["n"] for r in rows)
+    return 100 * sum(r["n"] for r in rows if r["meses"] in meses_) / total
+p48 = (faixa_pct("DOUTORADO", ANO0, (47, 48)), faixa_pct("DOUTORADO", ANO, (47, 48)))
+p60 = (faixa_pct("DOUTORADO", ANO0, (59, 60)), faixa_pct("DOUTORADO", ANO, (59, 60)))
+print(f"""
+<div class="kb-insight">
+As defesas se concentram em <strong>degraus de seis meses</strong> (47–48, 53–54 e 59–60 meses), acompanhando o
+calendário semestral. O degrau dos 4 anos encolheu ({pct(p48[0])} dos doutores em {ANO0}, {pct(p48[1])} em {ANO})
+e o dos 5 anos cresceu ({pct(p60[0])} para {pct(p60[1])}).
+</div>
+""")
+
+no_prazo = [("Mestrado acadêmico (≤ 24 meses)", kb.serie("disc_pct_mestrado_no_prazo")),
+            ("Doutorado acadêmico (≤ 48 meses)", kb.serie("disc_pct_doutorado_no_prazo"))]
+print("\n**Titulados dentro do prazo de referência (% dos titulados do ano)**\n")
+print(g.linhas(no_prazo, "percentual", rotulo="Titulados no prazo"))
+
+linhas_tab = []
+for n in ("MESTRADO", "DOUTORADO"):
+    for a in (ANO0, ANO):
+        p = percentis(n, a)
+        linhas_tab.append([dict(NIVEIS)[n], a] + [f"{m} meses" for m in p])
+print("\n**Percentis do tempo de titulação**\n")
+print('<div class="table-responsive"><table class="table table-sm"><thead><tr>'
+      + "".join(f"<th>{c}</th>" for c in ["Nível", "Ano", "25%", "Mediana", "75%", "90%"])
+      + "</tr></thead><tbody>"
+      + "".join("<tr>" + "".join(f"<td>{c}</td>" for c in l) + "</tr>" for l in linhas_tab)
+      + "</tbody></table></div>")
+
+pd0, pd1 = percentis("DOUTORADO", ANO0), percentis("DOUTORADO", ANO)
+dop = dict(no_prazo[1][1])
+mep = dict(no_prazo[0][1])
+print(f"""
+<div class="kb-insight">
+Em {ANO0}, <strong>{pct(dop[ANO0])} dos doutores</strong> titulados concluíram em até 48 meses. Em {ANO}
+foram <strong>{pct(dop[ANO])}</strong>. A mediana passou de {pd0[1]} para {pd1[1]} meses, e o
+percentil 90 de {pd0[3]} para {pd1[3]}: a cauda de quem demora muito ficou mais longa. A queda se acelera
+a partir de 2021 (prorrogações da pandemia), mas já vinha antes, de {pct(dop[ANO0])} para {pct(dop[2019])} até 2019.
+No mestrado a parcela no prazo foi de {pct(mep[ANO0])} para {pct(mep[ANO])}.
+</div>
+""")
+```
+
+### Onde se demora e onde se desiste mais
+
+```{python}
+#| output: asis
+def recorte(indicador, tipo):
+    rows = kb.consulta("select recorte_valor as r, valor from indicador_valor where indicador_id = ? and recorte_tipo = ? and ano = ? order by valor desc",
+                       indicador, tipo, ANO)
+    return [(r["r"].capitalize().replace("Lingüística", "Linguística"), r["valor"]) for r in rows]
+
+tempo_ga = recorte("disc_tempo_titulacao_doutorado", "grande_area")
+desl_ga = recorte("disc_taxa_desligamento", "grande_area")
+print(f"\n**Tempo médio de titulação no doutorado, por grande área ({ANO})**\n")
+print(g.barras_h(tempo_ga, "meses"))
+print(f"\n**Taxa anual de desligamento, por grande área ({ANO})**\n")
+print(g.barras_h(desl_ga, "percentual"))
+
+notas = ["3", "4", "5", "6", "7"]
+t_nota = dict(recorte("disc_tempo_titulacao_doutorado", "conceito"))
+d_nota = dict(recorte("disc_taxa_desligamento", "conceito"))
+print(f"\n**Por nota do programa ({ANO})**\n")
+print('<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Nota</th>'
+      + "".join(f"<th>{n}</th>" for n in notas) + "</tr></thead><tbody>"
+      + "<tr><td>Tempo médio no doutorado</td>" + "".join(f"<td>{meses(t_nota[n])}</td>" for n in notas) + "</tr>"
+      + "<tr><td>Taxa de desligamento</td>" + "".join(f"<td>{pct(d_nota[n])}</td>" for n in notas) + "</tr>"
+      + "</tbody></table></div>")
+exatas = dict(desl_ga)
+print(f"""
+<div class="kb-insight">
+<strong>{tempo_ga[0][0]} e {tempo_ga[1][0]}</strong> têm os doutorados mais longos ({meses(tempo_ga[0][1])} e
+{meses(tempo_ga[1][1])}) e estão entre as áreas que mais perdem alunos: {desl_ga[0][0]} lidera o desligamento
+com {pct(desl_ga[0][1])}, contra {pct(desl_ga[-1][1])} em {desl_ga[-1][0]}. Programas mais bem avaliados
+perdem menos alunos (nota 7: {pct(d_nota["7"])}; nota 3: {pct(d_nota["3"])}), mas não titulam mais rápido:
+o doutorado em programa nota 7 leva {meses(t_nota["7"])}, contra {meses(t_nota["4"])} na nota 4.
+</div>
+""")
+```
+
+### Quem são: titulados mais velhos
+
+```{python}
+#| output: asis
+FAIXAS = [("até 29", "var(--viz-o1)"), ("30 a 34", "var(--viz-o2)"), ("35 a 39", "var(--viz-o3)"),
+          ("40 a 44", "var(--viz-o4)"), ("45 ou mais", "var(--viz-o5)")]
+juntar = {"até 24": "até 29", "25 a 29": "até 29"}
+rows = kb.consulta("select nivel, ano, faixa_idade, sum(n) as n from discentes_idade where evento = 'titulado' and ano in (?, ?) and faixa_idade <> 'não informada' group by nivel, ano, faixa_idade",
+                   ANO0, ANO)
+colunas = [(n, a) for n in ("MESTRADO", "MESTRADO PROFISSIONAL", "DOUTORADO") for a in (ANO0, ANO)]
+rot = {("MESTRADO", ANO0): f"Me. acad. {ANO0}", ("MESTRADO", ANO): f"Me. acad. {ANO}",
+       ("MESTRADO PROFISSIONAL", ANO0): f"Me. prof. {ANO0}", ("MESTRADO PROFISSIONAL", ANO): f"Me. prof. {ANO}",
+       ("DOUTORADO", ANO0): f"Dout. {ANO0}", ("DOUTORADO", ANO): f"Dout. {ANO}"}
+valores = {f: {rot[c]: 0 for c in colunas} for f, _ in FAIXAS}
+for r in rows:
+    c = (r["nivel"], r["ano"])
+    if c in rot:
+        valores[juntar.get(r["faixa_idade"], r["faixa_idade"])][rot[c]] += r["n"]
+print("\n**Idade na titulação, por nível**\n")
+print(g.colunas_empilhadas([rot[c] for c in colunas], FAIXAS, valores, rotulo="Idade na titulação por nível"))
+def pct40(c):
+    tot = sum(valores[f][rot[c]] for f, _ in FAIXAS)
+    return 100 * (valores["40 a 44"][rot[c]] + valores["45 ou mais"][rot[c]]) / tot
+print(f"""
+<div class="kb-insight">
+O mestrado profissional atende quem já está no mercado: em {ANO}, <strong>{pct(pct40(("MESTRADO PROFISSIONAL", ANO)))}
+dos mestres profissionais tinham 40 anos ou mais</strong> ao se titular ({pct(pct40(("MESTRADO PROFISSIONAL", ANO0)))} em {ANO0}).
+O mestrado acadêmico também envelheceu: a parcela com 40 anos ou mais foi de {pct(pct40(("MESTRADO", ANO0)))} para
+{pct(pct40(("MESTRADO", ANO)))}.
+</div>
+""")
+```
+
+## Insights
+
+```{python}
+#| output: asis
+print(f"""
+1. **O crescimento do sistema veio do mestrado profissional.** O ingresso nele cresceu
+   {pct(var(ing["MESTRADO PROFISSIONAL"]))} em {ANO - ANO0} anos, contra {pct(var(ing["MESTRADO"]))} no mestrado acadêmico.
+   Seu público é outro: mais velho, já no mercado de trabalho, e com mais desligamentos.
+2. **Terminar no prazo virou exceção no doutorado.** A parcela de doutores titulados em até 48 meses caiu de
+   {pct(dop[ANO0])} para {pct(dop[ANO])}. A pandemia acelerou a queda, mas a tendência é anterior.
+   Como a bolsa de doutorado dura 48 meses, isso sugere que uma parte crescente dos doutorandos
+   termina o curso sem bolsa.
+3. **A pandemia aparece como adiamento, não como evasão.** Em 2020 caíram ao mesmo tempo as titulações
+   e os desligamentos. Os anos seguintes mostram o efeito: mais titulados, e com mais tempo de curso.
+""")
+longas = [a for a, _ in tempo_ga[:2]]
+evasivas = [a for a, _ in desl_ga[:2]]
+if set(longas) == set(evasivas):
+    print(f"""4. **{longas[0]} e {longas[1]} combinam cursos longos e mais evasão.** São as duas áreas com o
+   doutorado mais longo e com as maiores taxas de desligamento. É um bom ponto de partida para
+   investigar retenção.
+""")
+else:
+    print(f"""4. **Curso longo e evasão alta nem sempre andam juntos.** Os doutorados mais longos estão em
+   {longas[0]} e {longas[1]}; o maior desligamento, em {evasivas[0]} e {evasivas[1]}.
+""")
+```

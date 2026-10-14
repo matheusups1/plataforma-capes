@@ -1,0 +1,248 @@
+---
+title: "Programas e avaliação"
+subtitle: "A avaliação CAPES, a escala de notas e a distribuição da qualidade pelo país."
+---
+
+```{python}
+import kb
+import graficos as g
+
+MODULO = "02-programas-e-avaliacao"
+ANO = kb.consulta("select max(ano) as a from programa_ano")[0]["a"]
+ANO0 = kb.consulta("select min(ano) as a from programa_ano")[0]["a"]
+pct = lambda v: kb.fmt(v, "percentual")
+num = lambda v: kb.fmt(v, "contagem")
+
+NOTAS = [("≤3", "var(--viz-o1)"), ("4", "var(--viz-o2)"), ("5", "var(--viz-o3)"),
+         ("6", "var(--viz-o4)"), ("7", "var(--viz-o5)"), ("Sem nota (A)", "var(--viz-neutro)")]
+
+def faixa(conceito):
+    if conceito is None:
+        return "Sem nota (A)"
+    return "≤3" if conceito <= 3 else str(conceito)
+
+def serie_recorte(indicador, tipo, valor):
+    return kb.serie(indicador, tipo, valor)
+```
+
+## Conceitos
+
+A cada ciclo de avaliação a CAPES atribui a todo programa uma **nota de 1 a 7**. A nota 3 é
+o mínimo para funcionar; notas 1 e 2 levam ao descredenciamento. As notas **6 e 7** indicam
+padrão internacional e só são possíveis para programas com doutorado, por isso programas
+só com mestrado chegam no máximo a 5. A nota define se o programa continua, se pode abrir
+doutorado e quanto recebe de fomento.
+
+No período desta base houve duas avaliações: a **Quadrienal 2017** (sobre 2013–2016) e a
+**Quadrienal 2021** (sobre 2017–2020). Programas recém-aprovados aparecem com o código
+**A** até passarem pela primeira avaliação. Termos destacados estão no
+[glossário](../../glossario.qmd).
+
+## Indicadores do módulo
+
+```{python}
+#| output: asis
+print(kb.grade_tiles(kb.indicadores(MODULO), link_catalogo="../../indicadores.html"))
+```
+
+Definições, fórmulas e limitações no [catálogo de indicadores](../../indicadores.qmd#mod-02-programas-e-avaliacao).
+
+## Exploração dos dados
+
+### As notas mudam em degraus
+
+```{python}
+rows = kb.consulta("select ano, conceito from programa_ano")
+anos = sorted({r["ano"] for r in rows})
+comp = {n: {a: 0 for a in anos} for n, _ in NOTAS}
+for r in rows:
+    comp[faixa(r["conceito"])][r["ano"]] += 1
+
+mudancas = kb.consulta("""
+    select f.ano,
+           sum(f.conceito - p.conceito = 1) as subiu_1,
+           sum(f.conceito > p.conceito) as subiu,
+           sum(f.conceito < p.conceito) as caiu,
+           sum(f.conceito = p.conceito) as manteve
+    from programa_ano f join programa_ano p on p.cd_programa = f.cd_programa and p.ano = f.ano - 1
+    group by f.ano order by f.ano
+""")
+anos_avaliacao = [m for m in mudancas if m["subiu"] + m["caiu"] > 0.05 * (m["subiu"] + m["caiu"] + m["manteve"])]
+ultima = anos_avaliacao[-1]
+fora = [m for m in mudancas if m not in anos_avaliacao]
+max_fora = max(100 * (m["subiu"] + m["caiu"]) / (m["subiu"] + m["caiu"] + m["manteve"]) for m in fora)
+n7 = {a: comp["7"][a] for a in anos}
+```
+
+```{python}
+#| output: asis
+print(g.colunas_empilhadas(anos, NOTAS, comp, rotulo="Composição dos programas por nota, por ano"))
+print(g.tabela(["Ano"] + [n for n, _ in NOTAS],
+               [[a] + [num(comp[n][a]) for n, _ in NOTAS] for a in anos],
+               resumo="Ver programas por nota e ano"))
+print(f"""
+<div class="kb-insight">
+A composição só muda de forma visível em <strong>{" e ".join(str(m["ano"]) for m in anos_avaliacao)}</strong>,
+os anos em que entram as notas das avaliações quadrienais. Nos outros anos, no máximo {pct(max_fora)} dos programas muda de nota.
+Em {ultima["ano"]}, <strong>{num(ultima["subiu"])} programas subiram</strong> e {num(ultima["caiu"])} caíram.
+Os programas nota 7 passaram de {num(n7[ANO0])} em {ANO0} para {num(n7[ANO])} em {ANO}.
+</div>
+""")
+```
+
+O resultado da última avaliação, programa a programa: cada linha é a nota no ano anterior e
+cada coluna, a nota depois da avaliação. A diagonal são os programas que mantiveram a nota.
+
+```{python}
+#| output: asis
+a1 = ultima["ano"]
+pares = kb.consulta("""
+    select p.conceito as antes, f.conceito as depois, count(*) as n
+    from programa_ano f join programa_ano p on p.cd_programa = f.cd_programa and p.ano = f.ano - 1
+    where f.ano = ? group by p.conceito, f.conceito
+""", a1)
+rot = [n for n, _ in NOTAS]
+m = [[0] * len(rot) for _ in rot]
+for r in pares:
+    m[rot.index(faixa(r["antes"]))][rot.index(faixa(r["depois"]))] += r["n"]
+print(g.matriz(rot, rot, m, rotulo_linhas=f"Nota em {a1 - 1}", rotulo_colunas=f"nota em {a1}"))
+saiu_a = sum(m[rot.index("Sem nota (A)")][:-1])
+print(f"""
+<div class="kb-insight">
+Na avaliação de {a1}, <strong>{pct(100 * ultima["subiu_1"] / ultima["subiu"])} das subidas foram de exatamente um degrau</strong>
+({num(ultima["subiu_1"])} de {num(ultima["subiu"])}).
+{num(saiu_a)} programas que estavam em implantação (A) receberam a primeira nota.
+</div>
+""")
+```
+
+### Onde estão os programas mais bem avaliados
+
+```{python}
+#| output: asis
+regioes = ["SUDESTE", "SUL", "CENTRO-OESTE", "NORDESTE", "NORTE"]
+series = [(r.title().replace("-O", "-o"), serie_recorte("prog_pct_nota_5_mais", "regiao", r)) for r in regioes]
+print("\n**Programas com nota 5 ou mais, por região (% dos programas avaliados)**\n")
+print(g.linhas(series, "percentual", rotulo="Programas com nota 5 ou mais, por região"))
+print(g.tabela(["Região"] + [str(a) for a, _ in series[0][1]],
+               [[n] + [pct(v) for _, v in pts] for n, pts in series],
+               resumo="Ver percentuais por região e ano"))
+fim = {n: pts[-1][1] for n, pts in series}
+ini = {n: pts[0][1] for n, pts in series}
+```
+
+```{python}
+#| output: asis
+uf7 = kb.consulta("""
+    select uf, count(*) as n from programa_ano where ano = ? and conceito = 7
+    group by uf order by n desc
+""", ANO)
+total7 = sum(r["n"] for r in uf7)
+top = uf7[:6]
+itens = [(r["uf"], 100 * r["n"] / total7) for r in top]
+itens.append((f"Demais {len(uf7) - len(top)} UFs", 100 * sum(r["n"] for r in uf7[6:]) / total7))
+top4 = sum(v for _, v in itens[:4])
+print(f"\n**Participação de cada UF nos {num(total7)} programas nota 7 ({ANO})**\n")
+print(g.barras_h(itens, "percentual"))
+print(f"""
+<div class="kb-insight">
+O Sudeste tem <strong>{pct(fim["Sudeste"])}</strong> dos programas com nota 5 ou mais, e o Norte, {pct(fim["Norte"])}.
+A distância entre os dois caiu de {kb.fmt(ini["Sudeste"] - ini["Norte"], "razao")} para
+{kb.fmt(fim["Sudeste"] - fim["Norte"], "razao")} pontos percentuais desde {ANO0}. No topo da escala a concentração é maior:
+<strong>{", ".join(u for u, _ in itens[:3])} e {itens[3][0]} reúnem {pct(top4)}</strong> dos programas nota 7.
+</div>
+""")
+```
+
+### Crescimento e desconcentração
+
+```{python}
+#| output: asis
+cresc = kb.consulta("""
+    select regiao,
+           sum(ano = ?) as fim, sum(ano = ?) as ini
+    from programa_ano group by regiao
+""", ANO, ANO0)
+itens = sorted(((r["regiao"].title().replace("-O", "-o"), 100 * (r["fim"] / r["ini"] - 1)) for r in cresc),
+               key=lambda x: -x[1])
+print(f"\n**Crescimento do número de programas, {ANO0}–{ANO}**\n")
+print(g.barras_h(itens, "percentual"))
+
+hhi_todos = kb.serie("prog_hhi_uf")
+hhi_7 = kb.serie("prog_hhi_uf", "conceito", "7")
+print("\n**Concentração entre UFs (HHI: ~370 = divisão igual entre as 27 UFs; 10.000 = tudo numa UF)**\n")
+print(g.linhas([("Todos os programas", hhi_todos), ("Programas nota 7", hhi_7)], "indice",
+               rotulo="Concentração entre UFs (HHI)"))
+print(g.tabela(["Ano", "Todos", "Nota 7"],
+               [[a, kb.fmt(v, "indice"), kb.fmt(v7, "indice")] for (a, v), (_, v7) in zip(hhi_todos, hhi_7)],
+               resumo="Ver HHI por ano"))
+print(f"""
+<div class="kb-insight">
+Os programas cresceram mais onde havia menos: <strong>{itens[0][0]} +{pct(itens[0][1])}</strong> contra
+{itens[-1][0]} +{pct(itens[-1][1])}. A concentração entre UFs (HHI) caiu de {kb.fmt(hhi_todos[0][1], "indice")}
+para {kb.fmt(hhi_todos[-1][1], "indice")}. Entre os programas nota 7 a queda foi maior, de
+{kb.fmt(hhi_7[0][1], "indice")} para {kb.fmt(hhi_7[-1][1], "indice")}, mas o índice segue
+<strong>{kb.fmt(hhi_7[-1][1] / hhi_todos[-1][1], "razao")} vezes</strong> o do sistema como um todo.
+A referência de divisão perfeitamente igual entre as 27 UFs seria cerca de 370.
+</div>
+""")
+```
+
+### Área do conhecimento e tipo de instituição
+
+```{python}
+#| output: asis
+ga = kb.consulta("""
+    select recorte_valor as nome, valor from indicador_valor
+    where indicador_id = 'prog_pct_nota_5_mais' and recorte_tipo = 'grande_area' and ano = ?
+    order by valor desc
+""", ANO)
+itens = [(r["nome"].capitalize().replace("Lingüística", "Linguística"), r["valor"]) for r in ga]
+print(f"\n**Programas com nota 5 ou mais, por grande área ({ANO})**\n")
+print(g.barras_h(itens, "percentual"))
+
+st = kb.consulta("""
+    select status_juridico as nome,
+           100.0 * sum(conceito >= 5) / count(conceito) as p5,
+           100.0 * sum(modalidade = 'PROFISSIONAL') / count(*) as prof,
+           count(*) as n
+    from programa_ano where ano = ? group by 1 order by n desc
+""", ANO)
+print(f"\n**Programas com nota 5 ou mais, por natureza da instituição ({ANO})**\n")
+print(g.barras_h([(f'{r["nome"].capitalize()} ({num(r["n"])})', r["p5"]) for r in st], "percentual"))
+prof = kb.serie("prog_pct_profissional")
+d = {r["nome"]: r for r in st}
+print(f"""
+<div class="kb-insight">
+A diferença entre áreas é maior que entre regiões: <strong>{itens[0][0]} {pct(itens[0][1])}</strong> contra
+{itens[-1][0]} {pct(itens[-1][1])}. Nas instituições <strong>estaduais</strong> (como USP, Unicamp e Unesp)
+{pct(d["ESTADUAL"]["p5"])} dos programas têm nota 5 ou mais, acima das federais ({pct(d["FEDERAL"]["p5"])}).
+A modalidade profissional passou de {pct(prof[0][1])} para {pct(prof[-1][1])} dos programas; ela pesa mais nas
+particulares ({pct(d["PARTICULAR"]["prof"])}) e tem notas mais baixas por construção, já que o mestrado
+profissional sem doutorado vai até 5.
+</div>
+""")
+```
+
+## Insights
+
+```{python}
+#| output: asis
+nota5 = kb.serie("prog_pct_nota_5_mais")
+print(f"""
+1. **A qualidade avaliada subiu em degraus, não de forma contínua.** A fatia de programas com nota 5 ou
+   mais foi de {pct(nota5[0][1])} ({ANO0}) para {pct(nota5[-1][1])} ({ANO}), com saltos nos anos de resultado
+   das avaliações quadrienais. Entre uma avaliação e outra a fatia **cai** (de {pct(nota5[0][1])} para
+   {pct(min(v for a, v in nota5 if a < anos_avaliacao[0]["ano"]))} antes de {anos_avaliacao[0]["ano"]}), porque
+   programas novos entram com nota baixa. Por isso a variação anual fora dos anos de avaliação mede
+   sobretudo a entrada de programas.
+2. **O sistema se espalhou, mas a excelência continua concentrada.** O Norte foi a região que mais
+   ganhou programas, e a concentração geral entre UFs caiu. Mesmo assim, quatro UFs do Sul e do
+   Sudeste somam {pct(top4)} dos programas nota 7.
+3. **A área explica mais que a região.** A distância entre grandes áreas ({pct(itens[0][1])} contra
+   {pct(itens[-1][1])} com nota 5 ou mais) supera a distância entre o Sudeste e o Norte.
+   Compare programas sempre dentro da mesma área de avaliação.
+4. **Notas de programas profissionais não são diretamente comparáveis.** A escala dos profissionais só
+   com mestrado vai até 5, então percentuais de "nota 5 ou mais" os penalizam por construção.
+""")
+```

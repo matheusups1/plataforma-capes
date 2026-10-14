@@ -1,0 +1,228 @@
+---
+title: "Teses e dissertações"
+subtitle: "O que se defende na pós-graduação brasileira, sobre quais temas, em que língua e com que expectativa de carreira."
+---
+
+```{python}
+import kb
+import graficos as g
+
+MODULO = "05-teses-e-dissertacoes"
+ANO = kb.consulta("select max(ano) as a from teses_programa_ano")[0]["a"]
+ANO0 = kb.consulta("select min(ano) as a from teses_programa_ano")[0]["a"]
+pct = lambda v: kb.fmt(v, "percentual")
+num = lambda v: kb.fmt(v, "contagem")
+dec = lambda v: kb.fmt(v, "razao")
+
+GRAFIAS = {"covid-19": "COVID-19", "sars-cov-2": "SARS-CoV-2", "bncc": "BNCC", "sus": "SUS", "tdah": "TDAH",
+           "hiv": "HIV", "dna": "DNA", "rna": "RNA", "aids": "aids", "tea": "TEA", "eja": "EJA", "ods": "ODS",
+           "pcr": "PCR", "fake news": "Fake news"}
+def termo(forma):
+    """Grafia de exibição: siglas conhecidas como se escrevem; demais com inicial maiúscula."""
+    return GRAFIAS.get(forma, forma[:1].upper() + forma[1:])
+
+def area(nome):
+    return nome.capitalize().replace("Lingüística", "Linguística")
+```
+
+## Conceitos
+
+Todo mestrado termina com uma **dissertação** e todo doutorado com uma **tese**. Cada
+trabalho defendido é registrado no **Catálogo de Teses e Dissertações** da CAPES, com
+título, resumo, palavras-chave, idioma, número de páginas e a expectativa de atuação
+profissional declarada pelo autor. O catálogo é coerente com os dados de discentes: o
+número de trabalhos de cada ano coincide com o de titulados (ver
+[metodologia](../../metodologia.qmd)).
+
+As **palavras-chave** são escritas livremente pelos autores. Para contá-las, esta base
+separa os termos, ignora diferenças de caixa e acentuação e conta quantos trabalhos usam
+cada termo. Termos destacados estão no [glossário](../../glossario.qmd).
+
+## Indicadores do módulo
+
+```{python}
+#| output: asis
+print(kb.grade_tiles(kb.indicadores(MODULO), link_catalogo="../../indicadores.html"))
+```
+
+Definições, fórmulas e limitações no [catálogo de indicadores](../../indicadores.qmd#mod-05-teses-e-dissertacoes).
+
+## Exploração dos dados
+
+### Quanto se defende
+
+```{python}
+#| output: asis
+rows = kb.consulta("""
+    select ano,
+           sum(case when nivel = 'MESTRADO' then n_trabalhos else 0 end) as me,
+           sum(case when nivel = 'MESTRADO PROFISSIONAL' then n_trabalhos else 0 end) as mp,
+           sum(case when eh_doutorado then n_trabalhos else 0 end) as do_,
+           sum(case when eh_doutorado then soma_paginas else 0 end) * 1.0 / sum(case when eh_doutorado then n_com_paginas else 0 end) as pag_do,
+           sum(case when not eh_doutorado then soma_paginas else 0 end) * 1.0 / sum(case when not eh_doutorado then n_com_paginas else 0 end) as pag_me
+    from teses_programa_ano group by ano order by ano
+""")
+series = [("Dissertações de mestrado acadêmico", [(r["ano"], r["me"]) for r in rows]),
+          ("Teses de doutorado", [(r["ano"], r["do_"]) for r in rows]),
+          ("Dissertações de mestrado profissional", [(r["ano"], r["mp"]) for r in rows])]
+print("\n**Trabalhos defendidos por ano**\n")
+print(g.linhas(series, "contagem", rotulo="Trabalhos defendidos por ano e nível"))
+print(g.tabela(["Ano", "Mestrado acadêmico", "Doutorado", "Mestrado profissional"],
+               [[r["ano"], num(r["me"]), num(r["do_"]), num(r["mp"])] for r in rows], resumo="Ver trabalhos por ano e nível"))
+d = {r["ano"]: r for r in rows}
+total = {a: d[a]["me"] + d[a]["mp"] + d[a]["do_"] for a in d}
+print(f"""
+<div class="kb-insight">
+Foram <strong>{num(sum(total.values()))} trabalhos</strong> entre {ANO0} e {ANO}: {num(total[ANO])} só em {ANO}. As teses
+de doutorado passaram de {num(d[ANO0]["do_"])} para {num(d[ANO]["do_"])} por ano, e as dissertações de mestrado
+profissional se multiplicaram por {dec(d[ANO]["mp"] / d[ANO0]["mp"])} ({num(d[ANO0]["mp"])} → {num(d[ANO]["mp"])}). Uma tese tem em média
+{dec(d[ANO]["pag_do"])} páginas; uma dissertação, {dec(d[ANO]["pag_me"])}.
+</div>
+""")
+```
+
+### Do que se pesquisa
+
+```{python}
+#| output: asis
+top = kb.consulta("select forma, n_trabalhos as n from palavras_chave_top where ano = ? and grande_area = 'TODAS' order by n desc limit 15", ANO)
+print(f"\n**Palavras-chave mais usadas em {ANO} (trabalhos que usam o termo)**\n")
+print(g.barras_h([(termo(r["forma"]), r["n"]) for r in top], "contagem"))
+
+areas = [r["grande_area"] for r in kb.consulta(
+    "select distinct grande_area from palavras_chave_top where grande_area not in ('TODAS', 'NÃO INFORMADA') order by 1")]
+linhas_tab = []
+for a in areas:
+    t5 = kb.consulta("select forma from palavras_chave_top where ano = ? and grande_area = ? order by n_trabalhos desc limit 5", ANO, a)
+    linhas_tab.append([area(a), " · ".join(termo(r["forma"]) for r in t5)])
+print(f"\n**Cinco termos mais usados em cada grande área ({ANO})**\n")
+print('<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Grande área</th><th>Termos</th></tr></thead><tbody>'
+      + "".join(f"<tr><td>{a}</td><td>{t}</td></tr>" for a, t in linhas_tab) + "</tbody></table></div>")
+print(f"""
+<div class="kb-insight">
+<strong>{termo(top[0]["forma"])}</strong> é o termo mais usado em {ANO}, em {num(top[0]["n"])} trabalhos. Logo depois
+vêm termos amplos ({", ".join(termo(r["forma"]) for r in top[1:4])}), que mostram onde está o volume da pós-graduação.
+</div>
+""")
+```
+
+### Temas que surgiram e temas que perderam espaço
+
+```{python}
+#| output: asis
+tend = kb.consulta("""
+    select a.forma, a.por_10_mil as ini, b.por_10_mil as fim, b.n_trabalhos as n_fim
+    from palavras_chave_tendencia a join palavras_chave_tendencia b using (chave)
+    where a.periodo = '2013–2016' and b.periodo = '2021–2024'
+""")
+emergentes = sorted((t for t in tend if t["fim"] >= 10), key=lambda t: (t["fim"] + 1) / (t["ini"] + 1), reverse=True)[:12]
+queda = sorted((t for t in tend if t["ini"] >= 10), key=lambda t: (t["fim"] + 1) / (t["ini"] + 1))[:8]
+print("\n**Temas emergentes: uso por 10 mil trabalhos em 2021–2024 (entre parênteses, em 2013–2016)**\n")
+print(g.barras_h([(f"{termo(t['forma'])} ({dec(t['ini'])})", t["fim"]) for t in emergentes], "razao"))
+print("\n**Temas em queda: uso por 10 mil trabalhos em 2021–2024 (entre parênteses, em 2013–2016)**\n")
+print(g.barras_h([(f"{termo(t['forma'])} ({dec(t['ini'])})", t["fim"]) for t in queda], "razao"))
+print(g.tabela(["Termo", "2013–2016", "2021–2024"],
+               [[termo(t["forma"]), dec(t["ini"]), dec(t["fim"])] for t in emergentes + queda],
+               resumo="Ver usos por 10 mil trabalhos"))
+pand = [t for t in emergentes if any(k in t["forma"] for k in ("covid", "pandemia", "sars", "remoto", "coronav"))]
+outros = [t for t in emergentes if t not in pand]
+IA = ["inteligência artificial", "aprendizado de máquina"]   # termos com base sólida em 2013–2016
+ia = sorted((t for t in tend if t["forma"] in IA), key=lambda t: IA.index(t["forma"]))
+vezes = lambda t: (t["fim"]) / t["ini"] if t["ini"] else float("inf")
+print(f"""
+<div class="kb-insight">
+A pandemia aparece de forma direta: {len(pand)} dos {len(emergentes)} termos que mais cresceram são ligados a ela
+({", ".join(termo(t["forma"]) for t in pand)}). Os demais emergentes são {", ".join(termo(t["forma"]) for t in outros)}.
+Com volume maior, a <strong>inteligência artificial</strong> também ganhou espaço
+({"; ".join(f"{termo(t['forma'])}: {dec(t['ini'])} → {dec(t['fim'])} por 10 mil" for t in ia)}).
+O tema que mais perdeu espaço foi <strong>{termo(queda[0]["forma"])}</strong> ({dec(queda[0]["ini"])} → {dec(queda[0]["fim"])}).
+</div>
+""")
+```
+
+### Em que língua
+
+```{python}
+#| output: asis
+ing = kb.consulta("""
+    select recorte_valor as r,
+           max(case when ano = ? then valor end) as ini,
+           max(case when ano = ? then valor end) as fim
+    from indicador_valor where indicador_id = 'tes_pct_ingles' and recorte_tipo = 'grande_area'
+    group by recorte_valor order by fim desc
+""", ANO0, ANO)
+print(f"\n**Trabalhos escritos em inglês, por grande área ({ANO}; entre parênteses, {ANO0})**\n")
+print(g.barras_h([(f"{area(r['r'])} ({pct(r['ini'])})", r["fim"]) for r in ing], "percentual"))
+ing_nota = dict((r["recorte_valor"], r["valor"]) for r in kb.consulta(
+    "select recorte_valor, valor from indicador_valor where indicador_id = 'tes_pct_ingles' and recorte_tipo = 'conceito' and ano = ?", ANO))
+br = kb.serie("tes_pct_ingles")
+print(f"""
+<div class="kb-insight">
+O inglês passou de {pct(br[0][1])} para {pct(br[-1][1])} dos trabalhos, mas o avanço é quase todo de
+<strong>{area(ing[0]["r"])}</strong> ({pct(ing[0]["ini"])} → {pct(ing[0]["fim"])}) e {area(ing[1]["r"])}
+({pct(ing[1]["ini"])} → {pct(ing[1]["fim"])}). Em {area(ing[-1]["r"])} segue em {pct(ing[-1]["fim"])}. Programas mais bem
+avaliados escrevem mais em inglês: {pct(ing_nota["7"])} dos trabalhos na nota 7, contra {pct(ing_nota["4"])} na nota 4.
+</div>
+""")
+```
+
+### Para onde os titulados querem ir
+
+```{python}
+#| output: asis
+CATS = [("ENSINO E PESQUISA", "Ensino e pesquisa", "var(--viz-s1)"), ("PESQUISA", "Só pesquisa", "var(--viz-s2)"),
+        ("EMPRESAS", "Empresas", "var(--viz-s3)"), ("PROFISSIONAL AUTÔNOMO", "Profissional autônomo", "var(--viz-s4)"),
+        ("OUTROS", "Outros", "var(--viz-s5)")]
+NIV = [("MESTRADO", "Mestrado acadêmico"), ("MESTRADO PROFISSIONAL", "Mestrado profissional"), ("DOUTORADO", "Doutorado")]
+rows = kb.consulta("select nivel, expectativa, n from teses_expectativa where ano = ?", ANO)
+valores = {rot: {nr: 0 for _, nr in NIV} for _, rot, _ in CATS}
+informados = {nr: 0 for _, nr in NIV}
+total_niv = {nr: 0 for _, nr in NIV}
+for r in rows:
+    nr = dict(NIV).get(r["nivel"])
+    if not nr:
+        continue
+    total_niv[nr] += r["n"]
+    rot = {c: rr for c, rr, _ in CATS}.get(r["expectativa"])
+    if rot:
+        valores[rot][nr] += r["n"]
+        informados[nr] += r["n"]
+print(f"\n**Expectativa de atuação declarada pelos titulados ({ANO}, entre os que informaram)**\n")
+print(g.colunas_empilhadas([nr for _, nr in NIV], [(rot, cor) for _, rot, cor in CATS], valores,
+                           rotulo="Expectativa de atuação por nível"))
+share = lambda cat, nr: 100 * valores[cat][nr] / informados[nr]
+print(g.tabela(["Expectativa"] + [nr for _, nr in NIV],
+               [[rot] + [pct(share(rot, nr)) for _, nr in NIV] for _, rot, _ in CATS], resumo="Ver percentuais"))
+cobertura = 100 * sum(informados.values()) / sum(total_niv.values())
+print(f"""
+<div class="kb-insight">
+<strong>{pct(share("Ensino e pesquisa", "Doutorado"))} dos novos doutores</strong> esperam atuar em ensino e pesquisa,
+e só {pct(share("Empresas", "Doutorado"))} em empresas. Mesmo no mestrado profissional, desenhado para o mercado de
+trabalho, {pct(share("Ensino e pesquisa", "Mestrado profissional"))} apontam ensino e pesquisa e
+{pct(share("Empresas", "Mestrado profissional"))}, empresas. A pergunta é respondida por {pct(cobertura)} dos titulados.
+</div>
+""")
+```
+
+## Insights
+
+```{python}
+#| output: asis
+print(f"""
+1. **A pandemia marcou a agenda de pesquisa.** COVID-19 é o termo mais usado em {ANO}, e {len(pand)} dos
+   {len(emergentes)} temas que mais cresceram estão ligados à pandemia ou ao ensino remoto.
+2. **A inteligência artificial virou agenda transversal.** Entre 2013–2016 e 2021–2024 o uso de
+   {" e o de ".join(f'"{t["forma"]}" se multiplicou por {dec(vezes(t))}' for t in ia)}.
+3. **A internacionalização pela língua é localizada.** O inglês cresceu em {area(ing[0]["r"])} e {area(ing[1]["r"])},
+   e em programas nota 7, mas segue marginal no restante do sistema.
+""")
+dout = kb.serie("disc_titulados_doutorado")
+doc = kb.serie("doc_total")
+cresc_dout = 100 * (dout[-1][1] / dout[0][1] - 1)
+cresc_doc = 100 * (doc[-1][1] / doc[0][1] - 1)
+print(f"""4. **A pós-graduação forma, sobretudo, para a própria academia.** {pct(share("Ensino e pesquisa", "Doutorado"))} dos
+   doutores e {pct(share("Ensino e pesquisa", "Mestrado profissional"))} dos mestres profissionais esperam atuar em
+   ensino e pesquisa. Desde {ANO0}, os doutores titulados por ano cresceram {pct(cresc_dout)}, e o corpo docente da
+   pós-graduação, {pct(cresc_doc)}{": a expectativa tende a não caber na academia." if cresc_dout > cresc_doc else "."}
+""")
+```

@@ -1,0 +1,28 @@
+# dados (GB) — reprodutíveis via config/datasets.yml + manifest
+data/raw/
+data/bronze/
+data/*.duckdb
+data/*.duckdb.wal
+# artefato publicado: regenerado por `capes export` (muda a cada execução)
+data/*.sqlite
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# dbt
+transform/target/
+transform/logs/
+transform/dbt_packages/
+transform/.user.yml
+# gerado de indicators/indicadores.yml
+transform/seeds/indicadores.csv
+
+# quarto
+site/_site/
+site/.quarto/
+
+# configurações locais do Claude Code (pré-visualização, permissões) — não fazem parte do projeto
+.claude/

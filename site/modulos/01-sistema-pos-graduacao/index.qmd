@@ -1,0 +1,273 @@
+---
+title: "Sistema de pós-graduação"
+subtitle: "Como o mestrado e o doutorado estão organizados no Brasil, como o sistema cresceu e onde ele está."
+---
+
+```{python}
+import kb
+import graficos as g
+
+MODULO = "01-sistema-pos-graduacao"
+ANO = kb.consulta("select max(ano) as a from programa_ano")[0]["a"]
+ANO0 = kb.consulta("select min(ano) as a from programa_ano")[0]["a"]
+pct = lambda v: kb.fmt(v, "percentual")
+num = lambda v: kb.fmt(v, "contagem")
+dec = lambda v: kb.fmt(v, "razao")
+serie = lambda i, t="brasil", r="BRASIL": dict(kb.serie(i, t, r))
+cresc = lambda s: 100 * (s[ANO] / s[ANO0] - 1)
+regiao = lambda r: r.title().replace("-O", "-o")
+juntar = lambda xs: " e ".join(xs) if len(xs) < 3 else ", ".join(xs[:-1]) + " e " + xs[-1]
+```
+
+## Conceitos
+
+A pós-graduação *stricto sensu* brasileira é organizada em **programas**. Cada programa
+está vinculado a uma instituição, a uma das cerca de 50 áreas de avaliação da CAPES e a
+uma modalidade, **acadêmica** ou **profissional**. Um programa oferece um ou mais
+**cursos**: mestrado, doutorado ou ambos. Todo ano os programas informam seus dados à
+CAPES pela Plataforma Sucupira, e esses registros são a matéria-prima desta base.
+
+Este módulo dá a visão de conjunto: tamanho, ritmo de crescimento, distribuição pelo
+território e estrutura. Os módulos seguintes aprofundam cada parte: a
+[avaliação](../02-programas-e-avaliacao/index.qmd), os [docentes](../03-docentes/index.qmd),
+os [discentes](../04-discentes-e-titulacao/index.qmd) e as
+[teses e dissertações](../05-teses-e-dissertacoes/index.qmd). Termos destacados estão no
+[glossário](../../glossario.qmd).
+
+## Indicadores do módulo
+
+```{python}
+#| output: asis
+print(kb.grade_tiles(kb.indicadores(MODULO), link_catalogo="../../indicadores.html"))
+```
+
+Definições, fórmulas e limitações no [catálogo de indicadores](../../indicadores.qmd#mod-01-sistema-pos-graduacao).
+
+## Exploração dos dados
+
+### Quanto o sistema cresceu
+
+```{python}
+#| output: asis
+COMPONENTES = [("prog_total", "Programas"), ("curso_doutorado_total", "Cursos de doutorado"),
+               ("doc_total", "Docentes"), ("disc_matriculados", "Discentes matriculados"),
+               ("disc_titulados_doutorado", "Doutores titulados")]
+indice = []
+for i, nome in COMPONENTES:
+    s = kb.serie(i)
+    base = s[0][1]
+    indice.append((nome, [(a, 100 * v / base) for a, v in s]))
+print(f"\n**Crescimento desde {ANO0} (índice: {ANO0} = 100)**\n")
+print(g.linhas(indice, "indice", rotulo=f"Crescimento dos componentes do sistema, {ANO0} = 100"))
+print(g.tabela(["Componente", str(ANO0), str(ANO), "Variação"],
+               [[nome, num(serie(i)[ANO0]), num(serie(i)[ANO]), pct(cresc(serie(i)))] for i, nome in COMPONENTES],
+               resumo="Ver valores absolutos"))
+mais = max(indice, key=lambda x: x[1][-1][1])
+menos = min(indice, key=lambda x: x[1][-1][1])
+print(f"""
+<div class="kb-insight">
+Em {ANO - ANO0} anos o sistema ganhou {num(serie("prog_total")[ANO] - serie("prog_total")[ANO0])} programas
+({pct(cresc(serie("prog_total")))}). O componente que mais cresceu foi <strong>{mais[0].lower()}</strong>
+(índice {kb.fmt(mais[1][-1][1], "indice")}), e o que menos cresceu, {menos[0].lower()} ({kb.fmt(menos[1][-1][1], "indice")}).
+{"A formação de doutores cresceu mais depressa que o número de programas e de docentes." if cresc(serie("disc_titulados_doutorado")) > max(cresc(serie("prog_total")), cresc(serie("doc_total"))) else ""}
+</div>
+""")
+```
+
+### A expansão desacelerou
+
+```{python}
+#| output: asis
+fluxo = kb.consulta("""
+    select a.ano,
+           sum(case when p.cd_programa is null then 1 else 0 end) as entraram
+    from programa_ano a left join programa_ano p on p.cd_programa = a.cd_programa and p.ano = a.ano - 1
+    where a.ano > ? group by a.ano order by a.ano
+""", ANO0)
+saidas = kb.consulta("""
+    select p.ano + 1 as ano,
+           sum(case when a.cd_programa is null then 1 else 0 end) as sairam
+    from programa_ano p left join programa_ano a on a.cd_programa = p.cd_programa and a.ano = p.ano + 1
+    where p.ano < ? group by p.ano order by p.ano
+""", ANO)
+ent = [(r["ano"], r["entraram"]) for r in fluxo]
+sai = [(r["ano"], r["sairam"]) for r in saidas]
+print("\n**Programas que entraram e que saíram da coleta, por ano**\n")
+print(g.linhas([("Entraram", ent), ("Saíram", sai)], "contagem", rotulo="Entradas e saídas de programas"))
+saldo = [(a, e - s) for (a, e), (_, s) in zip(ent, sai)]
+print(g.tabela(["Ano", "Entraram", "Saíram", "Saldo"], [[a, num(e), num(s), num(e - s)] for (a, e), (_, s) in zip(ent, sai)],
+               resumo="Ver entradas, saídas e saldo"))
+media = lambda xs: sum(xs) / len(xs)
+ini = [e for a, e in ent if a <= ANO0 + 4]
+fim = [e for a, e in ent if a >= ANO - 2]
+negativos = [a for a, s in saldo if s < 0]
+picos = sorted(sai, key=lambda x: -x[1])[:2]
+print(f"""
+<div class="kb-insight">
+Entre {ANO0 + 1} e {ANO0 + 4} entraram em média <strong>{num(media(ini))} programas por ano</strong>; nos últimos três
+anos, {num(media(fim))}. As saídas (programas descredenciados, desativados ou fundidos) tiveram os maiores
+valores em {picos[0][0]} ({num(picos[0][1])}) e {picos[1][0]} ({num(picos[1][1])}){f", e o saldo foi negativo em {juntar([str(a) for a in negativos])}" if negativos else ""}.
+O sistema passou de uma fase de expansão para uma de estabilidade.
+</div>
+""")
+```
+
+### Um sistema jovem
+
+```{python}
+#| output: asis
+dec_rows = kb.consulta("""
+    select (ano_inicio / 10) * 10 as decada, count(*) as n
+    from programa_ano where ano = ? and ano_inicio is not null group by decada order by decada
+""", ANO)
+total = sum(r["n"] for r in dec_rows)
+itens = [(f"Antes de 1970" if r["decada"] < 1970 else f"Anos {r['decada']}", 100 * r["n"] / total) for r in dec_rows]
+agreg = {}
+for nome, v in itens:
+    agreg[nome] = agreg.get(nome, 0) + v
+print(f"\n**Programas em funcionamento em {ANO}, pela década de criação (% dos programas)**\n")
+print(g.barras_h(list(agreg.items()), "percentual"))
+recentes = 100 * sum(r["n"] for r in dec_rows if r["decada"] >= 2010) / total
+print(f"""
+<div class="kb-insight">
+<strong>{pct(recentes)} dos programas em funcionamento em {ANO} foram criados de 2010 em diante.</strong> Boa parte do
+sistema ainda passou por poucas avaliações, o que ajuda a explicar a concentração de notas 3 e 4
+(ver <a href="../02-programas-e-avaliacao/index.html">Programas e avaliação</a>).
+</div>
+""")
+```
+
+### Onde está a pós-graduação
+
+```{python}
+#| output: asis
+mun = kb.serie("municipios_total")
+fora = serie("prog_pct_fora_capitais")
+reg = ["SUL", "SUDESTE", "NORDESTE", "CENTRO-OESTE", "NORTE"]
+fora_reg = [(regiao(r), serie("prog_pct_fora_capitais", "regiao", r)) for r in reg]
+fora_reg.sort(key=lambda x: -x[1][ANO])
+print(f"\n**Programas fora das capitais, por região ({ANO}; entre parênteses, {ANO0})**\n")
+print(g.barras_h([(f"{n} ({pct(s[ANO0])})", s[ANO]) for n, s in fora_reg], "percentual"))
+
+dout = {r: serie("disc_titulados_doutorado", "regiao", r) for r in reg}
+tot0 = sum(s[ANO0] for s in dout.values())
+tot1 = sum(s[ANO] for s in dout.values())
+part = sorted(((regiao(r), 100 * s[ANO] / tot1, 100 * s[ANO0] / tot0) for r, s in dout.items()), key=lambda x: -x[1])
+print(f"\n**Participação de cada região nos doutores titulados ({ANO}; entre parênteses, {ANO0})**\n")
+print(g.barras_h([(f"{n} ({pct(p0)})", p1) for n, p1, p0 in part], "percentual"))
+
+top_mun = kb.consulta("""
+    select municipio, uf, count(*) as n from programa_ano where ano = ?
+    group by municipio, uf order by n desc limit 10
+""", ANO)
+print(f"\n**Municípios com mais programas ({ANO})**\n")
+print('<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Município</th><th>UF</th><th>Programas</th></tr></thead><tbody>'
+      + "".join(f"<tr><td>{r['municipio'].title()}</td><td>{r['uf']}</td><td>{num(r['n'])}</td></tr>" for r in top_mun)
+      + "</tbody></table></div>")
+sud = dict((n, (p1, p0)) for n, p1, p0 in part)
+print(f"""
+<div class="kb-insight">
+A pós-graduação chegou a <strong>{num(mun[-1][1])} municípios</strong> ({num(mun[0][1])} em {ANO0}), e os programas fora das
+capitais passaram de {pct(fora[ANO0])} para {pct(fora[ANO])}. O Sul é a região mais interiorizada; no Norte,
+{pct(dict((n, s) for n, s in fora_reg)["Norte"][ANO])} dos programas ficam fora das capitais. A formação de doutores
+também se espalhou: o Sudeste respondia por {pct(sud["Sudeste"][1])} dos doutores titulados em {ANO0} e por
+{pct(sud["Sudeste"][0])} em {ANO}, e a fatia do Norte foi de {pct(sud["Norte"][1])} para {pct(sud["Norte"][0])}.
+</div>
+""")
+```
+
+### Estrutura: níveis e instituições
+
+```{python}
+#| output: asis
+GRUPOS = [("Mestrado e doutorado", "var(--viz-s1)"), ("Só mestrado", "var(--viz-s2)"),
+          ("Só doutorado", "var(--viz-s3)"), ("Mestrado profissional", "var(--viz-s4)"),
+          ("Profissional com doutorado", "var(--viz-s5)")]
+grupo = {"MESTRADO/DOUTORADO": "Mestrado e doutorado", "MESTRADO": "Só mestrado", "DOUTORADO": "Só doutorado",
+         "MESTRADO PROFISSIONAL": "Mestrado profissional",
+         "MESTRADO PROFISSIONAL/DOUTORADO PROFISSIONAL": "Profissional com doutorado",
+         "DOUTORADO PROFISSIONAL": "Profissional com doutorado"}
+anos_g = [ANO0, 2017, 2020, ANO]
+rows = kb.consulta("select ano, grau, count(*) as n from programa_ano group by ano, grau")
+comp = {gname: {} for gname, _ in GRUPOS}
+for r in rows:
+    if r["ano"] in anos_g:
+        gname = grupo[r["grau"]]
+        comp[gname][r["ano"]] = comp[gname].get(r["ano"], 0) + r["n"]
+print("\n**Programas pelos cursos que oferecem**\n")
+print(g.colunas_empilhadas(anos_g, GRUPOS, comp, rotulo="Programas pelos cursos que oferecem"))
+
+st = kb.consulta("""
+    select status_juridico as s, sum(case when ano = ? then 1 else 0 end) as ini, sum(case when ano = ? then 1 else 0 end) as fim
+    from programa_ano group by s order by fim desc
+""", ANO0, ANO)
+tot_ini = sum(r["ini"] for r in st)
+tot_fim = sum(r["fim"] for r in st)
+print(f"\n**Programas por natureza da instituição ({ANO}; entre parênteses, {ANO0})**\n")
+print(g.barras_h([(f"{r['s'].capitalize()} ({pct(100 * r['ini'] / tot_ini)})", 100 * r["fim"] / tot_fim) for r in st], "percentual"))
+fed = {r["s"]: r for r in st}["FEDERAL"]
+ies = serie("ies_total")
+print(f"""
+<div class="kb-insight">
+As <strong>instituições federais</strong> sediam {pct(100 * fed["fim"] / tot_fim)} dos programas, e sua fatia
+{"cresceu" if fed["fim"] / tot_fim > fed["ini"] / tot_ini else "caiu"} desde {ANO0} ({pct(100 * fed["ini"] / tot_ini)}). O número de instituições com pós-graduação foi de {num(ies[ANO0])} para
+{num(ies[ANO])}. Programas com mestrado e doutorado seguem como o modelo dominante. A novidade estrutural do período é o
+doutorado profissional, que surge em 2017 e já está em {num(comp["Profissional com doutorado"].get(ANO, 0))} programas.
+</div>
+""")
+```
+
+## O sistema em síntese
+
+O quadro abaixo junta os números centrais de cada módulo. Cada linha leva ao módulo que
+a explica.
+
+```{python}
+#| output: asis
+SINTESE = [
+    ("02-programas-e-avaliacao", "Programas e avaliação", "prog_pct_nota_5_mais"),
+    ("02-programas-e-avaliacao", "Programas e avaliação", "prog_hhi_uf"),
+    ("03-docentes", "Docentes", "doc_pct_60_mais"),
+    ("03-docentes", "Docentes", "doc_pct_bolsa_pq"),
+    ("04-discentes-e-titulacao", "Discentes e titulação", "disc_pct_doutorado_no_prazo"),
+    ("04-discentes-e-titulacao", "Discentes e titulação", "disc_tempo_titulacao_doutorado"),
+    ("05-teses-e-dissertacoes", "Teses e dissertações", "tes_pct_ingles"),
+]
+linhas_s = []
+for mod, nome_mod, iid in SINTESE:
+    ind = kb.indicador(iid)
+    s = serie(iid)
+    linhas_s.append(f'<tr><td><a href="../{mod}/index.html">{nome_mod}</a></td><td>{ind["nome"]}</td>'
+                    f'<td>{kb.fmt(s[ANO0], ind["unidade"])}</td><td>{kb.fmt(s[ANO], ind["unidade"])}</td></tr>')
+print('<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Módulo</th><th>Indicador</th>'
+      f"<th>{ANO0}</th><th>{ANO}</th></tr></thead><tbody>" + "".join(linhas_s) + "</tbody></table></div>")
+```
+
+## Insights
+
+```{python}
+#| output: asis
+d60 = serie("doc_pct_60_mais")
+prazo = serie("disc_pct_doutorado_no_prazo")
+pq = serie("doc_pct_bolsa_pq")
+hhi = serie("prog_hhi_uf")
+hhi7 = serie("prog_hhi_uf", "conceito", "7")
+dout_br = serie("disc_titulados_doutorado")
+doc = serie("doc_total")
+print(f"""
+1. **O sistema cresceu e agora se estabiliza.** De {ANO0} a {ANO} os programas cresceram {pct(cresc(serie("prog_total")))},
+   mas a entrada de programas novos caiu de {num(media(ini))} para {num(media(fim))} por ano. Os próximos ganhos tendem a
+   vir de qualidade e de distribuição, não de quantidade.
+2. **O território se abriu; a excelência, menos.** Mais municípios ({num(mun[0][1])} → {num(mun[-1][1])}), mais programas
+   fora das capitais ({pct(fora[ANO0])} → {pct(fora[ANO])}) e concentração entre UFs em queda (HHI {kb.fmt(hhi[ANO0], "indice")}
+   → {kb.fmt(hhi[ANO], "indice")}). Mas os programas nota 7 seguem {dec(hhi7[ANO] / hhi[ANO])} vezes mais concentrados
+   ([módulo 02](../02-programas-e-avaliacao/index.qmd)).
+3. **Formam-se mais doutores com um corpo docente que envelhece.** Os doutores titulados por ano cresceram
+   {pct(cresc(dout_br))} e os docentes, {pct(cresc(doc))}. No mesmo período, os docentes com 60 anos ou mais foram de
+   {pct(d60[ANO0])} para {pct(d60[ANO])}, e a cobertura da bolsa PQ caiu de {pct(pq[ANO0])} para {pct(pq[ANO])}
+   ([módulo 03](../03-docentes/index.qmd)).
+4. **O doutorado ficou mais longo.** Os doutores que terminam em até 48 meses caíram de {pct(prazo[ANO0])} para
+   {pct(prazo[ANO])} ([módulo 04](../04-discentes-e-titulacao/index.qmd)). E a maior parte dos titulados espera seguir
+   carreira acadêmica ([módulo 05](../05-teses-e-dissertacoes/index.qmd)), justamente onde o crescimento é menor.
+""")
+```

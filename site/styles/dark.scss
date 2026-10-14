@@ -1,0 +1,23 @@
+/*-- scss:defaults --*/
+$body-bg: #1a1a19;
+$body-color: #ffffff;
+$link-color: #6da7ec;
+
+/*-- scss:rules --*/
+:root {
+  --kb-surface: #1a1a19;
+  --kb-surface-raised: #222221;
+  --kb-text: #ffffff;
+  --kb-text-secondary: #c3c2b7;
+  --kb-text-muted: #9a9890;
+  --kb-border: #383835;
+  --kb-link: #6da7ec;
+  --viz-accent: #3987e5;   // validado: contraste ≥ 3:1 sobre #1a1a19
+  --viz-grade: #2c2c2a;
+  // categórica (validada no fundo escuro: CVD adjacente ≥ 8,4; todas ≥ 3:1)
+  --viz-s1: #3987e5; --viz-s2: #d95926; --viz-s3: #199e70; --viz-s4: #c98500; --viz-s5: #d55181;
+  // ordinal notas ≤3 → 7: do escuro (perto do fundo) ao claro (validada --ordinal)
+  --viz-o1: #184f95; --viz-o2: #256abf; --viz-o3: #3987e5; --viz-o4: #86b6ef; --viz-o5: #cde2fb;
+  --viz-o1-tinta: #ffffff; --viz-o2-tinta: #ffffff; --viz-o3-tinta: #0b0b0b; --viz-o4-tinta: #0b0b0b; --viz-o5-tinta: #0b0b0b;
+  --viz-neutro: #52514e;
+}

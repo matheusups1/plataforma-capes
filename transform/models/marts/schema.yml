@@ -1,0 +1,106 @@
+version: 2
+
+models:
+  - name: dim_area_avaliacao
+    description: Áreas de avaliação da CAPES, com nome vigente e nomes históricos.
+    columns:
+      - name: cd_area_avaliacao
+        tests: [unique, not_null]
+      - name: nm_area_avaliacao
+        tests: [not_null]
+
+  - name: dim_ies
+    description: Instituições de ensino com programas de pós-graduação (atributos mais recentes).
+    columns:
+      - name: cd_ies
+        tests: [unique, not_null]
+
+  - name: fct_programa_ano
+    description: Programas por ano-base, com atributos daquele ano. Grão programa × ano.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [cd_programa, ano]
+    columns:
+      - name: cd_ies
+        tests:
+          - relationships: {arguments: {to: ref('dim_ies'), field: cd_ies}}
+      - name: cd_area_avaliacao
+        tests:
+          - relationships: {arguments: {to: ref('dim_area_avaliacao'), field: cd_area_avaliacao}}
+
+  - name: fct_docentes_programa_ano
+    description: Vínculos docentes agregados por programa × ano.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [cd_programa, ano]
+      - programa_existe_no_ano
+
+  - name: fct_discentes_programa_ano
+    description: Discentes por programa × nível × ano, com fluxo (ingresso, titulação, desligamento).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [cd_programa, nivel, ano]
+      - programa_existe_no_ano
+
+  - name: fct_teses_programa_ano
+    description: Teses e dissertações defendidas por programa × nível × ano.
+    tests:
+      - programa_existe_no_ano
+    columns:
+      - name: soma_paginas
+        description: Soma das páginas, desconsiderando valores fora de 1–2000 (erros de digitação).
+
+  - name: mart_docentes_idade
+    description: Docentes (pessoas distintas) por faixa de idade, ano e se é permanente.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [ano, permanente, faixa_idade]
+
+  - name: mart_docentes_formacao
+    description: Docentes (pessoas distintas) pelo país e, no Brasil, pela IES da maior titulação.
+
+  - name: mart_orientacoes_por_orientador
+    description: Orientadores pelo número de defesas orientadas no ano (10 = 10 ou mais).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [ano, defesas_orientadas]
+
+  - name: mart_palavras_chave_top
+    description: Top 30 palavras-chave por ano e grande área (TODAS = sistema).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [ano, grande_area, chave]
+
+  - name: mart_palavras_chave_tendencia
+    description: Uso de cada palavra-chave por quadriênio, por 10 mil trabalhos (termos com ≥ 150 usos).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [periodo, chave]
+
+  - name: mart_teses_expectativa
+    description: Expectativa de atuação declarada pelos titulados, por ano e nível.
+
+  - name: mart_titulacao_meses
+    description: Histograma de meses até a titulação (ano × nível × grande área; 120 = 120 ou mais).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [ano, nivel, grande_area, meses]
+    columns:
+      - name: meses
+        tests:
+          - dbt_utils.accepted_range: {arguments: {min_value: 1, max_value: 120}}
+
+  - name: mart_discentes_idade
+    description: Ingressantes e titulados por faixa de idade, ano e nível (agregado nacional).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [ano, nivel, evento, faixa_idade]

@@ -1,0 +1,125 @@
+version: 2
+
+models:
+  - name: stg_programas
+    description: >
+      Programas de pós-graduação stricto sensu, um registro por programa e ano-base
+      (Coleta CAPES/Sucupira). Atributos da IES são os vigentes naquele ano.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [cd_programa, ano]
+    columns:
+      - name: ano
+        description: Ano-base da coleta.
+        tests: [not_null]
+      - name: cd_programa
+        description: Código CAPES do programa (ex. 10001018002P1). Estável entre anos.
+        tests: [not_null]
+      - name: cd_ies
+        description: Código CAPES da instituição.
+        tests: [not_null]
+      - name: dependencia_adm
+        tests:
+          - accepted_values: {arguments: {values: ['PÚBLICA', 'PRIVADA']}}
+      - name: status_juridico
+        tests:
+          - accepted_values: {arguments: {values: ['FEDERAL', 'ESTADUAL', 'MUNICIPAL', 'PARTICULAR']}}
+      - name: regiao
+        tests:
+          - accepted_values: {arguments: {values: ['NORTE', 'NORDESTE', 'CENTRO-OESTE', 'SUDESTE', 'SUL']}}
+      - name: uf
+        tests: [not_null]
+      - name: cd_area_avaliacao
+        description: Uma das ~50 áreas de avaliação da CAPES (o nome mudou em alguns anos; o código é estável).
+        tests: [not_null]
+      - name: modalidade
+        tests:
+          - accepted_values: {arguments: {values: ['ACADÊMICO', 'PROFISSIONAL']}}
+      - name: conceito
+        description: >
+          Nota da avaliação CAPES (1–7). NULL quando o programa está em implantação
+          (código 'A', ver em_implantacao). Programas só com mestrado vão até 5.
+        tests:
+          - accepted_values: {arguments: {values: [1, 2, 3, 4, 5, 6, 7], quote: false}}
+      - name: situacao
+        tests:
+          - accepted_values: {arguments: {values: ['EM FUNCIONAMENTO', 'EM DESATIVACAO']}}
+      - name: dt_situacao
+        tests: [not_null]
+
+  - name: stg_cursos
+    description: Cursos de mestrado e doutorado (acadêmico e profissional) por ano-base.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [cd_curso, ano]
+    columns:
+      - name: cd_programa
+        tests: [not_null]
+      - name: grau
+        tests:
+          - accepted_values: {arguments: {values: ['MESTRADO', 'DOUTORADO', 'MESTRADO PROFISSIONAL', 'DOUTORADO PROFISSIONAL']}}
+      - name: situacao
+        tests:
+          - accepted_values: {arguments: {values: ['EM FUNCIONAMENTO', 'EM DESATIVACAO', 'EM PROJETO']}}
+
+  - name: stg_docentes
+    description: >
+      Vínculos docente × programa × ano-base. Sem nome nem documento (privacidade);
+      id_pessoa é pseudônimo. Uma pessoa pode atuar em mais de um programa no mesmo ano.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [id_pessoa, cd_programa, ano]
+    columns:
+      - name: id_pessoa
+        tests: [not_null]
+      - name: categoria
+        description: PERMANENTE (núcleo do programa, base da avaliação), COLABORADOR ou VISITANTE.
+        tests:
+          - accepted_values: {arguments: {values: ['PERMANENTE', 'COLABORADOR', 'VISITANTE']}}
+      - name: regime_trabalho
+        tests:
+          - accepted_values: {arguments: {values: ['INTEGRAL', 'DEDICAÇÃO EXCLUSIVA', 'PARCIAL']}}
+      - name: bolsa_produtividade_cnpq
+        description: Nível da bolsa de produtividade CNPq (SR, 1A–1D, 2); NULL se não tem.
+        tests:
+          - accepted_values: {arguments: {values: ['SR', '1A', '1B', '1C', '1D', '2']}}
+
+  - name: stg_discentes
+    description: >
+      Discentes por programa, nível e ano-base, com a situação ao fim do ano
+      (matriculado, titulado, desligado...). Sem dados identificáveis.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [id_pessoa, cd_programa, nivel, ano]
+    columns:
+      - name: id_pessoa
+        tests: [not_null]
+      - name: nivel
+        tests:
+          - accepted_values: {arguments: {values: ['MESTRADO', 'DOUTORADO', 'MESTRADO PROFISSIONAL', 'DOUTORADO PROFISSIONAL']}}
+      - name: situacao
+        description: Situação no fim do ano-base. Titulação e desligamento são eventos daquele ano.
+        tests:
+          - accepted_values: {arguments: {values: ['MATRICULADO', 'TITULADO', 'DESLIGADO', 'ABANDONOU', 'MUDANÇA DE NÍVEL SEM DEFESA']}}
+      - name: dt_matricula
+        tests: [not_null]
+      - name: meses_ate_titulacao
+        description: Meses entre matrícula e titulação (só para titulados).
+
+  - name: stg_teses
+    description: Catálogo de teses e dissertações defendidas, um registro por trabalho.
+    columns:
+      - name: id_trabalho
+        tests: [unique, not_null]
+      - name: cd_programa
+        tests: [not_null]
+      - name: dt_titulacao
+        tests: [not_null]
+      - name: nivel
+        description: Nível do trabalho. NULL em 7 registros da fonte.
+        tests:
+          - accepted_values: {arguments: {values: ['MESTRADO', 'DOUTORADO', 'MESTRADO PROFISSIONAL', 'DOUTORADO PROFISSIONAL']}}

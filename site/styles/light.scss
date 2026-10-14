@@ -13,4 +13,11 @@ $link-color: #256abf;
   --kb-border: #e1e0d9;
   --kb-link: #256abf;
   --viz-accent: #2a78d6;   // validado: contraste ≥ 3:1 sobre #fcfcfb
+  --viz-grade: #e1e0d9;
+  // categórica (validada: CVD adjacente ≥ 9,1; s3–s5 < 3:1 → rótulos diretos + tabela)
+  --viz-s1: #2a78d6; --viz-s2: #eb6834; --viz-s3: #1baf7a; --viz-s4: #eda100; --viz-s5: #e87ba4;
+  // ordinal notas ≤3 → 7 (validada --ordinal: ΔL ≥ 0,06, ponta clara 2,06:1)
+  --viz-o1: #86b6ef; --viz-o2: #3987e5; --viz-o3: #256abf; --viz-o4: #184f95; --viz-o5: #0d366b;
+  --viz-o1-tinta: #0b0b0b; --viz-o2-tinta: #0b0b0b; --viz-o3-tinta: #ffffff; --viz-o4-tinta: #ffffff; --viz-o5-tinta: #ffffff;
+  --viz-neutro: #c3c2b7;
 }

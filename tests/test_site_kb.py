@@ -46,3 +46,8 @@ def test_stat_tile_tem_valor_delta_e_tooltip_por_ano(kb):
     assert "4.635" in tile and "▲ +15,9%" in tile
     assert "<title>2023: 4.000</title>" in tile
     assert 'href="indicadores.html#ind-x"' in tile
+
+
+def test_indice_grande_sem_decimais(kb):
+    assert kb.fmt(2183.4, "indice") == "2.183"
+    assert kb.fmt(4.43, "indice") == "4,4"

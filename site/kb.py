@@ -65,6 +65,8 @@ def fmt(valor: float | None, unidade: str) -> str:
         return _num(valor, 1) + "%"
     if unidade == "meses":
         return _num(valor, 1) + " meses"
+    if unidade == "indice" and abs(valor) >= 100:
+        return _num(valor, 0)  # ex.: HHI 2.183
     return _num(valor, 1)
 
 

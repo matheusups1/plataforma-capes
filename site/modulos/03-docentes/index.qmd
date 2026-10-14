@@ -1,18 +1,46 @@
 ---
 title: "Docentes"
-subtitle: "Quem ensina e orienta na pós-graduação: categorias, titulação e reconhecimento em pesquisa."
+subtitle: "Quem ensina e orienta na pós-graduação: categorias, formação, reconhecimento em pesquisa e carga de orientação."
 ---
 
 ```{python}
 import kb
+import graficos as g
+
 MODULO = "03-docentes"
+ANO = kb.consulta("select max(ano) as a from docentes_idade")[0]["a"]
+ANO0 = kb.consulta("select min(ano) as a from docentes_idade")[0]["a"]
+pct = lambda v: kb.fmt(v, "percentual")
+num = lambda v: kb.fmt(v, "contagem")
+dec = lambda v: kb.fmt(v, "razao")
+
+def valor(indicador, ano, tipo="brasil", recorte="BRASIL", campo="valor"):
+    r = kb.consulta(f"select {campo} as v from indicador_valor where indicador_id = ? and ano = ? and recorte_tipo = ? and recorte_valor = ?",
+                    indicador, ano, tipo, recorte)
+    return r[0]["v"] if r else None
+
+def nome_proprio(texto):
+    """'ESTADOS UNIDOS' → 'Estados Unidos'; preposições em minúsculas."""
+    minusc = {"de", "da", "do", "das", "dos", "e"}
+    return " ".join(p.lower() if p.lower() in minusc and i else p.capitalize() for i, p in enumerate(texto.split()))
+
+def recorte(indicador, tipo, ano):
+    rows = kb.consulta("select recorte_valor as r, valor from indicador_valor where indicador_id = ? and recorte_tipo = ? and ano = ? order by valor desc",
+                       indicador, tipo, ano)
+    return [(r["r"].capitalize().replace("Lingüística", "Linguística").replace("-o", "-o"), r["valor"]) for r in rows]
 ```
 
 ## Conceitos
 
-Cada programa declara seu corpo docente em três categorias. Os **permanentes** são o núcleo estável e a base da avaliação. Os **colaboradores** participam de forma complementar, e os **visitantes** atuam por tempo determinado. Uma mesma pessoa pode atuar em mais de um programa.
+Cada programa declara, todo ano, seu corpo docente em três categorias. Os **permanentes**
+são o núcleo estável: orientam, lecionam e pesquisam, e é sobre eles que recai a avaliação.
+Os **colaboradores** participam de forma complementar, e os **visitantes** atuam por tempo
+determinado. Uma mesma pessoa pode estar em mais de um programa, por isso esta base
+distingue **pessoas** (contadas uma vez) de **vínculos** (pessoa × programa).
 
-Termos destacados estão no [glossário](../../glossario.qmd).
+A **bolsa de produtividade em pesquisa (PQ)** do CNPq, nos níveis 2, 1D–1A e Sênior, é
+usada aqui como sinal de reconhecimento em pesquisa. Termos destacados estão no
+[glossário](../../glossario.qmd).
 
 ## Indicadores do módulo
 
@@ -25,7 +53,182 @@ Definições, fórmulas e limitações no [catálogo de indicadores](../../indic
 
 ## Exploração dos dados
 
+### Pessoas e vínculos
+
+```{python}
+#| output: asis
+pessoas = kb.serie("doc_total")
+vinculos = [(a, valor("doc_por_programa", a, campo="numerador")) for a, _ in pessoas]
+print("\n**Docentes: pessoas distintas e vínculos com programas**\n")
+print(g.linhas([("Vínculos", vinculos), ("Pessoas", pessoas)], "contagem", rotulo="Docentes: pessoas e vínculos"))
+print(g.tabela(["Ano", "Pessoas", "Vínculos", "Vínculos por pessoa"],
+               [[a, num(p), num(v), dec(v / p)] for (a, p), (_, v) in zip(pessoas, vinculos)],
+               resumo="Ver pessoas e vínculos por ano"))
+perm = kb.serie("doc_pct_permanentes")
+print(f"""
+<div class="kb-insight">
+O corpo docente cresceu de {num(pessoas[0][1])} para <strong>{num(pessoas[-1][1])} pessoas</strong>
+({pct(100 * (pessoas[-1][1] / pessoas[0][1] - 1))}). Cada docente tem em média
+{dec(vinculos[-1][1] / pessoas[-1][1])} vínculos com programas.
+A fatia de vínculos permanentes subiu de {pct(perm[0][1])} para {pct(perm[-1][1])}.
+</div>
+""")
+```
+
+### Um corpo docente que envelhece
+
+```{python}
+#| output: asis
+FAIXAS = [("até 39", "var(--viz-o1)"), ("40 a 49", "var(--viz-o2)"), ("50 a 59", "var(--viz-o3)"),
+          ("60 a 69", "var(--viz-o4)"), ("70 ou mais", "var(--viz-o5)")]
+anos_idade = [ANO0, 2016, 2020, ANO]
+rows = kb.consulta("select ano, faixa_idade, sum(n_pessoas) as n from docentes_idade where faixa_idade <> 'não informada' group by ano, faixa_idade")
+comp = {f: {} for f, _ in FAIXAS}
+for r in rows:
+    if r["ano"] in anos_idade:
+        comp[r["faixa_idade"]][r["ano"]] = r["n"]
+print("\n**Docentes por faixa de idade (pessoas distintas)**\n")
+print(g.colunas_empilhadas(anos_idade, FAIXAS, comp, rotulo="Docentes por faixa de idade"))
+tot = {a: sum(comp[f].get(a, 0) for f, _ in FAIXAS) for a in anos_idade}
+jovem = {a: 100 * comp["até 39"].get(a, 0) / tot[a] for a in anos_idade}
+d60 = kb.serie("doc_pct_60_mais")
+ga60 = recorte("doc_pct_60_mais", "grande_area", ANO)
+print(f"\n**Vínculos com docentes de 60 anos ou mais, por grande área ({ANO})**\n")
+print(g.barras_h(ga60, "percentual"))
+print(f"""
+<div class="kb-insight">
+Os docentes com <strong>60 anos ou mais</strong> passaram de {pct(d60[0][1])} para <strong>{pct(d60[-1][1])}</strong>
+dos vínculos, e os com <strong>até 39 anos</strong> caíram de {pct(jovem[ANO0])} para {pct(jovem[ANO])} das pessoas.
+A entrada de docentes jovens não acompanhou o crescimento do sistema. O envelhecimento é maior em
+{ga60[0][0]} ({pct(ga60[0][1])}) e menor em {ga60[-1][0]} ({pct(ga60[-1][1])}).
+</div>
+""")
+```
+
+### Onde os docentes se doutoraram
+
+```{python}
+#| output: asis
+def formadoras(ano):
+    total = kb.consulta("select sum(n_pessoas) as n from docentes_formacao where ano = ?", ano)[0]["n"]
+    rows = kb.consulta("""
+        select sg_ies_titulacao as ies, n_pessoas as n from docentes_formacao
+        where ano = ? and pais_titulacao = 'BRASIL' and sg_ies_titulacao <> 'NÃO INFORMADA'
+        order by n desc limit 8
+    """, ano)
+    return total, rows
+total_ano, ies = formadoras(ANO)
+total_ano0, ies0 = formadoras(ANO0)
+print(f"\n**Instituições que mais formaram os docentes atuais ({ANO}, % das pessoas)**\n")
+print(g.barras_h([(r["ies"], 100 * r["n"] / total_ano) for r in ies], "percentual"))
+
+paises = kb.consulta("""
+    select pais_titulacao as p, sum(n_pessoas) as n from docentes_formacao
+    where ano = ? and pais_titulacao not in ('BRASIL', 'NÃO INFORMADO') group by p order by n desc
+""", ANO)
+total_ext = sum(r["n"] for r in paises)
+print(f"\n**Titulados no exterior, por país ({ANO}, % dos titulados fora do Brasil)**\n")
+print(g.barras_h([(nome_proprio(r["p"]), 100 * r["n"] / total_ext) for r in paises[:8]], "percentual"))
+
+ext = kb.serie("doc_pct_titulado_exterior")
+end = kb.serie("doc_pct_endogenia")
+end_reg = recorte("doc_pct_endogenia", "regiao", ANO)
+usp = 100 * ies[0]["n"] / total_ano
+top5 = 100 * sum(r["n"] for r in ies[:5]) / total_ano
+top5_0 = 100 * sum(r["n"] for r in ies0[:5]) / total_ano0
+usp0 = 100 * ies0[0]["n"] / total_ano0
+print(f"""
+<div class="kb-insight">
+<strong>{ies[0]["ies"]} formou {pct(usp)} dos docentes</strong> em atividade em {ANO}, e as cinco primeiras
+instituições, {pct(top5)}. A concentração vem caindo: em {ANO0} eram {pct(usp0)} e {pct(top5_0)}. A titulação no exterior perdeu peso, de {pct(ext[0][1])} para {pct(ext[-1][1])}
+dos vínculos, e se concentra em {nome_proprio(paises[0]["p"])}, {nome_proprio(paises[1]["p"])} e {nome_proprio(paises[2]["p"])}.
+A <strong>endogenia</strong> (permanentes doutorados na própria instituição) ficou estável, entre
+{pct(min(v for _, v in end))} e {pct(max(v for _, v in end))}, e é maior no {end_reg[0][0]} ({pct(end_reg[0][1])}),
+onde estão as instituições que mais formam doutores.
+</div>
+""")
+```
+
 ::: {.callout-note appearance="simple"}
-Em construção: análise exploratória por região, área e tipo de instituição, com
-insights do módulo.
+**Sobre a endogenia.** A medida compara siglas de instituições. Usamos a sigla vigente
+em cada ano: com a sigla atual, instituições que mudaram de nome aparecem como "não
+endógenas" nos anos antigos, e a série sobe artificialmente.
 :::
+
+### Bolsa de produtividade (PQ)
+
+```{python}
+#| output: asis
+notas = ["3", "4", "5", "6", "7"]
+pq_nota = dict(recorte("doc_pct_bolsa_pq", "conceito", ANO))
+print(f"\n**Vínculos com bolsa PQ, por nota do programa ({ANO})**\n")
+print(g.barras_h([(f"Nota {n}", pq_nota[n]) for n in notas], "percentual"))
+
+regioes = ["SUDESTE", "SUL", "NORDESTE", "CENTRO-OESTE", "NORTE"]
+series = [(r.title().replace("-O", "-o"), kb.serie("doc_pct_bolsa_pq", "regiao", r)) for r in regioes]
+print("\n**Vínculos com bolsa PQ, por região (%)**\n")
+print(g.linhas(series, "percentual", rotulo="Vínculos com bolsa PQ por região"))
+print(g.tabela(["Região"] + [str(a) for a, _ in series[0][1]],
+               [[n] + [pct(v) for _, v in pts] for n, pts in series], resumo="Ver percentuais por região e ano"))
+pq0, pq1 = valor("doc_pct_bolsa_pq", ANO0, campo="numerador"), valor("doc_pct_bolsa_pq", ANO, campo="numerador")
+v0, v1 = valor("doc_pct_bolsa_pq", ANO0, campo="denominador"), valor("doc_pct_bolsa_pq", ANO, campo="denominador")
+caiu_todas = all(pts[-1][1] < pts[0][1] for _, pts in series)
+print(f"""
+<div class="kb-insight">
+A bolsa PQ acompanha a nota do programa: <strong>{pct(pq_nota["7"])} dos vínculos em programas nota 7</strong>
+têm bolsa, contra {pct(pq_nota["3"])} na nota 3. Mas o número de bolsas não acompanhou a expansão: os vínculos com
+PQ cresceram {pct(100 * (pq1 / pq0 - 1))} desde {ANO0}, e os vínculos totais, {pct(100 * (v1 / v0 - 1))}.
+{"A cobertura caiu em todas as regiões." if caiu_todas else ""}
+</div>
+""")
+```
+
+### Carga de orientação
+
+```{python}
+#| output: asis
+dist = kb.consulta("select defesas_orientadas as d, n_orientadores as o, n_trabalhos as t from orientacoes_por_orientador where ano = ? order by d", ANO)
+tot_o = sum(r["o"] for r in dist)
+tot_t = sum(r["t"] for r in dist)
+rot = lambda d: "10 ou mais" if d == 10 else (f"{d} defesa" if d == 1 else f"{d} defesas")
+print(f"\n**Orientadores pelo número de defesas que orientaram em {ANO} (% dos orientadores)**\n")
+print(g.barras_h([(rot(r["d"]), 100 * r["o"] / tot_o) for r in dist], "percentual"))
+um = 100 * dist[0]["o"] / tot_o
+cinco_mais_t = 100 * sum(r["t"] for r in dist if r["d"] >= 5) / tot_t
+cinco_mais_o = 100 * sum(r["o"] for r in dist if r["d"] >= 5) / tot_o
+fatia_um = "a maioria" if um > 50.5 else ("metade" if um >= 49.5 else f"{pct(um)}")
+
+razao_ga = recorte("doc_razao_discente_docente", "grande_area", ANO)
+print(f"\n**Discentes matriculados por docente permanente, por grande área ({ANO})**\n")
+print(g.barras_h(razao_ga, "razao"))
+r_mod = dict(recorte("doc_razao_discente_docente", "modalidade", ANO))
+print(f"""
+<div class="kb-insight">
+Em {ANO}, {num(tot_o)} orientadores tiveram ao menos uma defesa. <strong>{pct(um)} orientaram uma única</strong>, e
+{pct(cinco_mais_o)} orientaram cinco ou mais — esses poucos respondem por {pct(cinco_mais_t)} dos trabalhos defendidos.
+A carga média também varia por área: {razao_ga[0][0]} tem {dec(razao_ga[0][1])} discentes por docente permanente,
+e {razao_ga[-1][0]}, {dec(razao_ga[-1][1])}. Nos programas acadêmicos a razão é {dec(r_mod["Acadêmico"])};
+nos profissionais, {dec(r_mod["Profissional"])}.
+</div>
+""")
+```
+
+## Insights
+
+```{python}
+#| output: asis
+print(f"""
+1. **A renovação do corpo docente perdeu ritmo.** A parcela de docentes com 60 anos ou mais subiu de
+   {pct(d60[0][1])} para {pct(d60[-1][1])}, e a de até 39 anos caiu de {pct(jovem[ANO0])} para {pct(jovem[ANO])}.
+   Sem reposição, a aposentadoria de uma geração tende a pressionar os programas na próxima década.
+2. **O reconhecimento em pesquisa não acompanhou a expansão.** A bolsa PQ se concentra nos programas
+   mais bem avaliados ({pct(pq_nota["7"])} na nota 7) e sua cobertura caiu de {pct(kb.serie("doc_pct_bolsa_pq")[0][1])}
+   para {pct(kb.serie("doc_pct_bolsa_pq")[-1][1])} dos vínculos.
+3. **A formação de quem forma se espalhou pelo país.** As cinco maiores formadoras ({", ".join(r["ies"] for r in ies[:5])})
+   respondiam por {pct(top5_0)} dos docentes em {ANO0} e por {pct(top5)} em {ANO}. Ao mesmo tempo a titulação no
+   exterior perdeu peso. O sistema passou a se reproduzir com doutores formados em mais
+   instituições brasileiras.
+4. **A orientação é distribuída de forma desigual.** Em {ANO}, {fatia_um} dos orientadores concluiu uma única
+   defesa, enquanto {pct(cinco_mais_o)} deles concentraram {pct(cinco_mais_t)} dos trabalhos.
+""")
+```

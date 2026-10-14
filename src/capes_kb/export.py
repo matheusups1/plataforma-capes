@@ -27,6 +27,9 @@ TABELAS = {
     "discentes_programa_ano": "select * from fct_discentes_programa_ano order by cd_programa, nivel, ano",
     "titulacao_meses": "select * from mart_titulacao_meses order by ano, nivel, grande_area, meses",
     "discentes_idade": "select * from mart_discentes_idade order by ano, nivel, evento, faixa_idade",
+    "docentes_idade": "select * from mart_docentes_idade order by ano, permanente, faixa_idade",
+    "docentes_formacao": "select * from mart_docentes_formacao order by ano, pais_titulacao, sg_ies_titulacao",
+    "orientacoes_por_orientador": "select * from mart_orientacoes_por_orientador order by ano, defesas_orientadas",
 }
 
 INDICES = {

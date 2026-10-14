@@ -200,6 +200,31 @@ indicadores:
     fontes: [docentes]
     modelo_dbt: mart_ind_03_docentes
 
+  doc_pct_60_mais:
+    nome: Docentes com 60 anos ou mais
+    modulo: 03-docentes
+    definicao: Percentual dos vínculos docentes cujo titular tem 60 anos ou mais no ano-base.
+    formula: 100 × vínculos com idade ≥ 60 / vínculos com ano de nascimento informado
+    unidade: percentual
+    fontes: [docentes]
+    modelo_dbt: mart_ind_03_docentes
+    interpretacao: Proxy de envelhecimento do corpo docente e de necessidade de renovação.
+
+  doc_pct_endogenia:
+    nome: Endogenia acadêmica
+    modulo: 03-docentes
+    definicao: >
+      Percentual dos docentes permanentes que obtiveram a maior titulação na mesma
+      instituição em que atuam no programa.
+    formula: 100 × permanentes titulados na mesma IES / permanentes com IES de titulação informada
+    unidade: percentual
+    fontes: [docentes, programas]
+    modelo_dbt: mart_ind_03_docentes
+    limitacoes: >
+      Compara as siglas informadas da IES de titulação e da IES do programa; siglas
+      grafadas de outro modo (ou instituições que mudaram de sigla) não casam, então o
+      valor tende a ser subestimado.
+
   doc_razao_discente_docente:
     nome: Discentes por docente permanente
     modulo: 03-docentes

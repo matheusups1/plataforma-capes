@@ -8,6 +8,7 @@ programas as (                -- grão programa × ano (para razões entre fatos
     select
         r.*,
         d.n_vinculos, d.n_permanentes, d.n_bolsa_pq, d.n_titulados_exterior,
+        d.n_60_mais, d.n_com_idade, d.n_permanentes_endogenos, d.n_permanentes_com_ies_titulacao,
         dc.n_matriculados
     from {{ ref('int_programa_recortes') }} r
     join {{ ref('fct_docentes_programa_ano') }} d using (cd_programa, ano)
@@ -36,6 +37,11 @@ union all
 union all
 {{ pct_por_recortes('doc_pct_titulado_exterior', 'pais',
     'count(*) filter (where titulado_exterior)', 'count(*)') }}
+union all
+{{ pct_por_recortes('doc_pct_60_mais', 'programas', 'sum(n_60_mais)', 'sum(n_com_idade)') }}
+union all
+{{ pct_por_recortes('doc_pct_endogenia', 'programas',
+    'sum(n_permanentes_endogenos)', 'sum(n_permanentes_com_ies_titulacao)') }}
 union all
 {{ razao_por_recortes('doc_razao_discente_docente', 'programas',
     'sum(n_matriculados)', 'sum(n_permanentes)') }}

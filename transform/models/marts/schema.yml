@@ -53,6 +53,23 @@ models:
       - name: soma_paginas
         description: Soma das páginas, desconsiderando valores fora de 1–2000 (erros de digitação).
 
+  - name: mart_docentes_idade
+    description: Docentes (pessoas distintas) por faixa de idade, ano e se é permanente.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [ano, permanente, faixa_idade]
+
+  - name: mart_docentes_formacao
+    description: Docentes (pessoas distintas) pelo país e, no Brasil, pela IES da maior titulação.
+
+  - name: mart_orientacoes_por_orientador
+    description: Orientadores pelo número de defesas orientadas no ano (10 = 10 ou mais).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [ano, defesas_orientadas]
+
   - name: mart_titulacao_meses
     description: Histograma de meses até a titulação (ano × nível × grande área; 120 = 120 ou mais).
     tests:

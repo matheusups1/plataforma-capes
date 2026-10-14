@@ -12,5 +12,7 @@ models:
   capes_kb:
     staging:
       +materialized: view   # leitura direta do Parquet bronze, sem cópia
+    intermediate:
+      +materialized: view
     marts:
       +materialized: table

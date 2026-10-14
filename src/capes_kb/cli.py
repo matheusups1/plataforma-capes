@@ -15,7 +15,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from capes_kb import bronze, config, ingest
+from capes_kb import bronze, config, indicadores, ingest
 
 TRANSFORM_DIR = config.ROOT / "transform"
 
@@ -32,6 +32,7 @@ def _dbt(args: list[str]) -> int:
 
 
 def transformar(args_dbt: list[str]) -> int:
+    indicadores.gerar_seed()  # catálogo YAML → seed, para o dbt testar a correspondência
     if not (TRANSFORM_DIR / "dbt_packages").exists():
         if codigo := _dbt(["deps"]):
             return codigo

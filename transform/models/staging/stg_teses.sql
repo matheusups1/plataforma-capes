@@ -21,7 +21,7 @@ select
     nullif({{ nulo('NM_EXPECTATIVA_ATUACAO') }}, 'NÃO INFORMADO') as expectativa_atuacao,
     nullif({{ nulo('NM_CATEGORIA_DOCENTE') }}, 'NÃO INFORMADO')   as categoria_orientador,
     IN_ORIENT_PARTICIPOU_BANCA = '1'                       as orientador_na_banca,
-    {{ nulo('DS_URL_TEXTO_COMPLETO') }} is not null        as tem_texto_completo,
+    {{ nulo('DS_URL_TEXTO_COMPLETO') }}                    as url_sucupira,  -- ficha no Sucupira, não o texto
     NM_GRANDE_AREA_CONHECIMENTO                            as grande_area,
     NM_AREA_CONHECIMENTO                                   as area_conhecimento
 from {{ source('bronze', 'teses') }}

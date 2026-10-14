@@ -1,0 +1,9 @@
+version: 2
+
+models:
+  - name: int_programa_recortes
+    description: Atributos de recorte (região, UF, área, modalidade...) por programa × ano.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [cd_programa, ano]

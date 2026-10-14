@@ -1,0 +1,10 @@
+version: 2
+
+seeds:
+  - name: indicadores
+    description: Catálogo de indicadores, gerado de indicators/indicadores.yml pela CLI (não editar).
+    config:
+      column_types: {indicador_id: varchar, unidade: varchar}
+    columns:
+      - name: indicador_id
+        tests: [unique, not_null]

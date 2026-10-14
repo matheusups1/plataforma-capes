@@ -28,3 +28,27 @@ models:
       - name: cd_area_avaliacao
         tests:
           - relationships: {arguments: {to: ref('dim_area_avaliacao'), field: cd_area_avaliacao}}
+
+  - name: fct_docentes_programa_ano
+    description: Vínculos docentes agregados por programa × ano.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [cd_programa, ano]
+      - programa_existe_no_ano
+
+  - name: fct_discentes_programa_ano
+    description: Discentes por programa × nível × ano, com fluxo (ingresso, titulação, desligamento).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [cd_programa, nivel, ano]
+      - programa_existe_no_ano
+
+  - name: fct_teses_programa_ano
+    description: Teses e dissertações defendidas por programa × nível × ano.
+    tests:
+      - programa_existe_no_ano
+    columns:
+      - name: soma_paginas
+        description: Soma das páginas, desconsiderando valores fora de 1–2000 (erros de digitação).

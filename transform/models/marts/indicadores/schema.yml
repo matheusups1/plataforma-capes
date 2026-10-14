@@ -1,0 +1,36 @@
+version: 2
+
+models:
+  - name: mart_indicador_valor
+    description: >
+      Valores de todos os indicadores por ano e recorte (formato longo). Razões mantêm
+      numerador e denominador para auditoria. Definições em indicators/indicadores.yml.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [indicador_id, ano, recorte_tipo, recorte_valor]
+    columns:
+      - name: indicador_id
+        tests:
+          - not_null
+          - relationships: {arguments: {to: ref('indicadores'), field: indicador_id}}
+      - name: recorte_tipo
+        tests:
+          - accepted_values:
+              arguments:
+                values: [brasil, regiao, uf, grande_area, area_avaliacao, modalidade, dependencia_adm, conceito]
+      - name: recorte_valor
+        tests: [not_null]
+      - name: variacao_anual_pct
+        description: Variação percentual em relação ao ano anterior no mesmo recorte.
+
+  - name: mart_ind_01_sistema
+    description: Indicadores do módulo 01 (formato longo, antes da união).
+  - name: mart_ind_02_programas
+    description: Indicadores do módulo 02 (formato longo, antes da união).
+  - name: mart_ind_03_docentes
+    description: Indicadores do módulo 03 (formato longo, antes da união).
+  - name: mart_ind_04_discentes
+    description: Indicadores do módulo 04 (formato longo, antes da união).
+  - name: mart_ind_05_teses
+    description: Indicadores do módulo 05 (formato longo, antes da união).

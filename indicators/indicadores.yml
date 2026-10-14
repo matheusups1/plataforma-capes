@@ -1,0 +1,313 @@
+# Catálogo de indicadores — FONTE ÚNICA da documentação.
+#
+# Cada indicador aqui precisa ter linhas em mart_indicador_valor (e vice-versa);
+# o `dbt build` falha se divergirem. Todos são calculados por ano e para os recortes:
+# brasil, regiao, uf, grande_area, area_avaliacao, modalidade, dependencia_adm, conceito.
+#
+# Campos obrigatórios:
+#   nome, modulo, definicao, formula, unidade, fontes, modelo_dbt
+# Opcionais:
+#   limitacoes, interpretacao
+#
+# unidade: contagem | percentual | razao | meses | indice
+#
+# Descartados (não reintroduzir sem nova fonte):
+#   tes_pct_texto_completo — DS_URL_TEXTO_COMPLETO aponta sempre para a ficha do trabalho
+#   na Plataforma Sucupira, não para o texto; daria 100% em todos os anos.
+
+modulos:
+  01-sistema-pos-graduacao: Sistema de pós-graduação
+  02-programas-e-avaliacao: Programas e avaliação
+  03-docentes: Docentes
+  04-discentes-e-titulacao: Discentes e titulação
+  05-teses-e-dissertacoes: Teses e dissertações
+
+indicadores:
+
+  # ── 01 Sistema de pós-graduação ─────────────────────────────────────────────
+  prog_total:
+    nome: Programas de pós-graduação
+    modulo: 01-sistema-pos-graduacao
+    definicao: Número de programas stricto sensu informados na Coleta CAPES no ano-base.
+    formula: count(programas)
+    unidade: contagem
+    fontes: [programas]
+    modelo_dbt: mart_ind_01_sistema
+    limitacoes: Inclui programas em desativação no ano.
+
+  curso_total:
+    nome: Cursos de pós-graduação
+    modulo: 01-sistema-pos-graduacao
+    definicao: >
+      Número de cursos (mestrado acadêmico, mestrado profissional, doutorado acadêmico e
+      doutorado profissional). Um programa pode ter um curso de cada nível.
+    formula: count(cursos)
+    unidade: contagem
+    fontes: [cursos]
+    modelo_dbt: mart_ind_01_sistema
+    limitacoes: Inclui cursos em projeto e em desativação.
+
+  curso_doutorado_total:
+    nome: Cursos de doutorado
+    modulo: 01-sistema-pos-graduacao
+    definicao: Número de cursos de doutorado (acadêmico e profissional).
+    formula: count(cursos onde nível = doutorado)
+    unidade: contagem
+    fontes: [cursos]
+    modelo_dbt: mart_ind_01_sistema
+
+  ies_total:
+    nome: Instituições com pós-graduação
+    modulo: 01-sistema-pos-graduacao
+    definicao: Número de instituições com pelo menos um programa no ano-base.
+    formula: count(distinct instituição)
+    unidade: contagem
+    fontes: [programas]
+    modelo_dbt: mart_ind_01_sistema
+
+  # ── 02 Programas e avaliação ────────────────────────────────────────────────
+  prog_pct_nota_5_mais:
+    nome: Programas com nota 5 ou mais
+    modulo: 02-programas-e-avaliacao
+    definicao: >
+      Percentual de programas avaliados com nota 5, 6 ou 7. Notas 6 e 7 indicam
+      desempenho de padrão internacional e exigem doutorado.
+    formula: 100 × programas com nota ≥ 5 / programas com nota atribuída
+    unidade: percentual
+    fontes: [programas]
+    modelo_dbt: mart_ind_02_programas
+    limitacoes: >
+      Exclui programas em implantação (código 'A'). A nota muda na avaliação
+      quadrienal (2017 e 2021/22), então saltos nesses anos refletem nova avaliação.
+    interpretacao: Proxy da qualidade média do sistema avaliado.
+
+  prog_conceito_medio:
+    nome: Nota média dos programas
+    modulo: 02-programas-e-avaliacao
+    definicao: Média da nota CAPES (1–7) dos programas avaliados.
+    formula: soma das notas / programas com nota atribuída
+    unidade: indice
+    fontes: [programas]
+    modelo_dbt: mart_ind_02_programas
+    limitacoes: >
+      Programas só com mestrado têm nota máxima 5, o que puxa a média para baixo
+      em recortes com muitos programas novos ou profissionais.
+
+  prog_pct_com_doutorado:
+    nome: Programas que oferecem doutorado
+    modulo: 02-programas-e-avaliacao
+    definicao: Percentual de programas que têm curso de doutorado (acadêmico ou profissional).
+    formula: 100 × programas com doutorado / programas
+    unidade: percentual
+    fontes: [programas]
+    modelo_dbt: mart_ind_02_programas
+
+  prog_pct_profissional:
+    nome: Programas na modalidade profissional
+    modulo: 02-programas-e-avaliacao
+    definicao: Percentual de programas da modalidade profissional (voltados ao mercado de trabalho).
+    formula: 100 × programas profissionais / programas
+    unidade: percentual
+    fontes: [programas]
+    modelo_dbt: mart_ind_02_programas
+
+  prog_pct_em_rede:
+    nome: Programas em rede
+    modulo: 02-programas-e-avaliacao
+    definicao: Percentual de programas oferecidos em rede por várias instituições associadas.
+    formula: 100 × programas em rede / programas
+    unidade: percentual
+    fontes: [programas]
+    modelo_dbt: mart_ind_02_programas
+
+  # ── 03 Docentes ─────────────────────────────────────────────────────────────
+  doc_total:
+    nome: Docentes da pós-graduação
+    modulo: 03-docentes
+    definicao: Número de pessoas distintas atuando como docentes em programas no ano-base.
+    formula: count(distinct pessoa)
+    unidade: contagem
+    fontes: [docentes]
+    modelo_dbt: mart_ind_03_docentes
+    limitacoes: >
+      Uma pessoa com vínculo em programas de recortes diferentes conta uma vez em cada
+      recorte, então a soma dos recortes pode superar o total Brasil.
+
+  doc_permanentes:
+    nome: Docentes permanentes
+    modulo: 03-docentes
+    definicao: >
+      Pessoas distintas na categoria permanente — o núcleo estável do programa, que
+      orienta, leciona e pesquisa, e é a base da avaliação CAPES.
+    formula: count(distinct pessoa onde categoria = permanente)
+    unidade: contagem
+    fontes: [docentes]
+    modelo_dbt: mart_ind_03_docentes
+
+  doc_pct_permanentes:
+    nome: Vínculos docentes permanentes
+    modulo: 03-docentes
+    definicao: Percentual dos vínculos docente–programa que são da categoria permanente.
+    formula: 100 × vínculos permanentes / vínculos
+    unidade: percentual
+    fontes: [docentes]
+    modelo_dbt: mart_ind_03_docentes
+
+  doc_por_programa:
+    nome: Docentes por programa
+    modulo: 03-docentes
+    definicao: Média de vínculos docentes por programa.
+    formula: vínculos docentes / programas com docentes
+    unidade: razao
+    fontes: [docentes, programas]
+    modelo_dbt: mart_ind_03_docentes
+
+  doc_pct_bolsa_pq:
+    nome: Docentes com bolsa de produtividade CNPq
+    modulo: 03-docentes
+    definicao: >
+      Percentual de vínculos docentes cujo titular tem bolsa de produtividade em pesquisa
+      do CNPq (níveis SR, 1A–1D e 2) — reconhecimento de destaque em pesquisa.
+    formula: 100 × vínculos com bolsa PQ / vínculos
+    unidade: percentual
+    fontes: [docentes]
+    modelo_dbt: mart_ind_03_docentes
+
+  doc_pct_titulado_exterior:
+    nome: Docentes titulados no exterior
+    modulo: 03-docentes
+    definicao: Percentual de vínculos docentes cujo titular obteve a maior titulação fora do Brasil.
+    formula: 100 × vínculos com titulação no exterior / vínculos com país de titulação informado
+    unidade: percentual
+    fontes: [docentes]
+    modelo_dbt: mart_ind_03_docentes
+
+  doc_razao_discente_docente:
+    nome: Discentes por docente permanente
+    modulo: 03-docentes
+    definicao: Discentes matriculados ao fim do ano por vínculo docente permanente.
+    formula: discentes matriculados / vínculos docentes permanentes
+    unidade: razao
+    fontes: [discentes, docentes]
+    modelo_dbt: mart_ind_03_docentes
+    interpretacao: Proxy da carga de orientação.
+
+  # ── 04 Discentes e titulação ────────────────────────────────────────────────
+  disc_matriculados:
+    nome: Discentes matriculados
+    modulo: 04-discentes-e-titulacao
+    definicao: Discentes com situação "matriculado" ao fim do ano-base (estoque em 31/12).
+    formula: count(discentes onde situação = matriculado)
+    unidade: contagem
+    fontes: [discentes]
+    modelo_dbt: mart_ind_04_discentes
+    limitacoes: Não inclui quem titulou ou foi desligado durante o ano.
+
+  disc_ingressantes:
+    nome: Ingressantes
+    modulo: 04-discentes-e-titulacao
+    definicao: Discentes que ingressaram no curso durante o ano-base.
+    formula: count(discentes ingressantes)
+    unidade: contagem
+    fontes: [discentes]
+    modelo_dbt: mart_ind_04_discentes
+
+  disc_titulados:
+    nome: Titulados
+    modulo: 04-discentes-e-titulacao
+    definicao: Mestres e doutores titulados no ano-base.
+    formula: count(discentes onde situação = titulado)
+    unidade: contagem
+    fontes: [discentes]
+    modelo_dbt: mart_ind_04_discentes
+    limitacoes: Coerente com o catálogo de teses (diferença ≤ 0,1% por ano, testado no pipeline).
+
+  disc_titulados_doutorado:
+    nome: Doutores titulados
+    modulo: 04-discentes-e-titulacao
+    definicao: Doutores (acadêmicos e profissionais) titulados no ano-base.
+    formula: count(discentes de doutorado onde situação = titulado)
+    unidade: contagem
+    fontes: [discentes]
+    modelo_dbt: mart_ind_04_discentes
+
+  disc_taxa_desligamento:
+    nome: Taxa anual de desligamento
+    modulo: 04-discentes-e-titulacao
+    definicao: >
+      Percentual dos discentes vinculados no ano que foram desligados ou abandonaram o curso.
+    formula: 100 × (desligados + abandonos) / discentes vinculados no ano
+    unidade: percentual
+    fontes: [discentes]
+    modelo_dbt: mart_ind_04_discentes
+    limitacoes: >
+      Taxa anual, não de coorte: não diz qual fração de uma turma conclui o curso.
+      Mudança de nível sem defesa (mestrado → doutorado direto) não conta como desligamento.
+
+  disc_tempo_titulacao_mestrado:
+    nome: Tempo médio de titulação no mestrado
+    modulo: 04-discentes-e-titulacao
+    definicao: Média de meses entre matrícula e titulação dos mestres (acadêmicos) titulados no ano.
+    formula: soma dos meses até a titulação / mestres titulados com meses informados
+    unidade: meses
+    fontes: [discentes]
+    modelo_dbt: mart_ind_04_discentes
+    interpretacao: A referência CAPES para o mestrado acadêmico é de 24 meses.
+
+  disc_tempo_titulacao_doutorado:
+    nome: Tempo médio de titulação no doutorado
+    modulo: 04-discentes-e-titulacao
+    definicao: Média de meses entre matrícula e titulação dos doutores (acadêmicos) titulados no ano.
+    formula: soma dos meses até a titulação / doutores titulados com meses informados
+    unidade: meses
+    fontes: [discentes]
+    modelo_dbt: mart_ind_04_discentes
+    interpretacao: A referência CAPES para o doutorado acadêmico é de 48 meses.
+
+  disc_pct_estrangeiros:
+    nome: Discentes estrangeiros
+    modulo: 04-discentes-e-titulacao
+    definicao: Percentual dos discentes vinculados no ano com nacionalidade estrangeira.
+    formula: 100 × discentes estrangeiros / discentes vinculados
+    unidade: percentual
+    fontes: [discentes]
+    modelo_dbt: mart_ind_04_discentes
+
+  # ── 05 Teses e dissertações ─────────────────────────────────────────────────
+  tes_total:
+    nome: Teses e dissertações defendidas
+    modulo: 05-teses-e-dissertacoes
+    definicao: Trabalhos de conclusão de mestrado e doutorado registrados no catálogo no ano.
+    formula: count(trabalhos)
+    unidade: contagem
+    fontes: [teses]
+    modelo_dbt: mart_ind_05_teses
+
+  tes_teses_doutorado:
+    nome: Teses de doutorado
+    modulo: 05-teses-e-dissertacoes
+    definicao: Teses de doutorado (acadêmico e profissional) defendidas no ano.
+    formula: count(trabalhos de doutorado)
+    unidade: contagem
+    fontes: [teses]
+    modelo_dbt: mart_ind_05_teses
+
+  tes_pct_ingles:
+    nome: Trabalhos escritos em inglês
+    modulo: 05-teses-e-dissertacoes
+    definicao: Percentual de teses e dissertações cujo idioma é o inglês.
+    formula: 100 × trabalhos em inglês / trabalhos
+    unidade: percentual
+    fontes: [teses]
+    modelo_dbt: mart_ind_05_teses
+    interpretacao: Proxy de internacionalização da produção discente.
+
+  tes_paginas_media:
+    nome: Páginas por trabalho
+    modulo: 05-teses-e-dissertacoes
+    definicao: Média de páginas das teses e dissertações.
+    formula: soma de páginas / trabalhos com páginas informadas (entre 1 e 2000)
+    unidade: razao
+    fontes: [teses]
+    modelo_dbt: mart_ind_05_teses
+    limitacoes: Valores fora de 1–2000 são tratados como erro de digitação e excluídos.

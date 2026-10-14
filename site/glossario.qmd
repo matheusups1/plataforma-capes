@@ -1,0 +1,124 @@
+---
+title: Glossário
+subtitle: Os termos da pós-graduação brasileira usados nesta base, em linguagem direta.
+---
+
+## Instituições e sistemas
+
+CAPES
+: Coordenação de Aperfeiçoamento de Pessoal de Nível Superior, fundação vinculada ao
+  Ministério da Educação. Avalia, regula e fomenta a pós-graduação *stricto sensu* no Brasil.
+
+Plataforma Sucupira
+: Sistema da CAPES em que os programas informam, todo ano, seus dados de docentes,
+  discentes, produção e trabalhos de conclusão. É a origem dos dados abertos usados aqui.
+
+Coleta CAPES
+: O envio anual desses dados pela Plataforma Sucupira. Cada coleta se refere a um
+  **ano-base**: tudo nesta base é organizado por ano-base.
+
+## Estrutura da pós-graduação
+
+Pós-graduação *stricto sensu*
+: Mestrado e doutorado — cursos que conferem grau acadêmico e diploma com validade
+  nacional. Não confundir com a *lato sensu* (especializações e MBAs), que não é avaliada
+  pela CAPES e não está nesta base.
+
+Programa de pós-graduação (PPG)
+: A unidade avaliada pela CAPES. Reúne docentes, linhas de pesquisa e um ou mais cursos.
+  Identificado por um código estável, como `10001018002P1`.
+
+Curso
+: Um nível oferecido por um programa: mestrado, doutorado, mestrado profissional ou
+  doutorado profissional. Um programa "mestrado/doutorado" tem dois cursos.
+
+Modalidade acadêmica e profissional
+: Programas **acadêmicos** formam pesquisadores e docentes; **profissionais** voltam-se
+  à qualificação para o mercado de trabalho e à aplicação do conhecimento.
+
+Programa em rede
+: Programa oferecido conjuntamente por várias instituições associadas.
+
+Instituição (IES)
+: Instituição de ensino ou pesquisa que abriga programas. Classificada pela
+  **dependência administrativa** (pública ou privada) e pelo **status jurídico**
+  (federal, estadual, municipal ou particular).
+
+## Avaliação
+
+Avaliação periódica (quadrienal)
+: Ciclo em que a CAPES avalia todos os programas e atribui notas. Até 2013 era trienal;
+  desde então é quadrienal: a Avaliação Quadrienal 2017 cobriu 2013–2016 e a de 2021
+  cobriu 2017–2020. As notas mudam nos dados no ano seguinte à divulgação do resultado.
+
+Nota (conceito CAPES)
+: Escala de 1 a 7. Notas 1 e 2 levam ao descredenciamento; 3 é o mínimo para
+  funcionamento; 6 e 7 indicam desempenho de padrão internacional e só são possíveis
+  para programas com doutorado. Programas só com mestrado chegam no máximo a 5.
+
+Código "A"
+: Aparece no lugar da nota em programas recém-aprovados que ainda não passaram por uma
+  avaliação periódica. Nesta base é tratado como "sem nota" e aparece como recorte próprio.
+
+Área de avaliação
+: Cada programa é avaliado por uma das cerca de 50 áreas da CAPES (ex.: Biodiversidade,
+  Computação, Educação). Algumas mudaram de nome ao longo do tempo; aqui usamos o nome atual.
+
+Grande área do conhecimento
+: Agrupamento das áreas em nove grandes áreas (Ciências Exatas e da Terra, Ciências
+  Biológicas, Engenharias, Ciências da Saúde, Ciências Agrárias, Ciências Sociais
+  Aplicadas, Ciências Humanas, Linguística, Letras e Artes, e Multidisciplinar).
+
+Qualis
+: Classificação de periódicos usada na avaliação da produção intelectual. A produção
+  intelectual ficará num módulo futuro.
+
+## Pessoas
+
+Docente permanente
+: Núcleo estável do programa: orienta, leciona e pesquisa regularmente. É a base da
+  avaliação e dos indicadores de corpo docente.
+
+Docente colaborador
+: Participa de atividades do programa sem integrar o núcleo permanente.
+
+Docente visitante
+: Atua no programa por tempo determinado, em geral vindo de outra instituição.
+
+Bolsa de produtividade (PQ) do CNPq
+: Bolsa concedida pelo CNPq a pesquisadores de destaque, nos níveis 2, 1D, 1C, 1B, 1A e
+  Sênior (SR). É usada aqui como indicador de reconhecimento em pesquisa.
+
+Discente
+: Aluno de mestrado ou doutorado. A cada ano-base, cada discente tem uma **situação**:
+  *matriculado* (segue no curso ao fim do ano), *titulado* (defendeu e concluiu),
+  *desligado* ou *abandonou* (saiu sem concluir) ou *mudança de nível sem defesa*
+  (passou do mestrado direto ao doutorado).
+
+Ingressante
+: Discente que iniciou o curso naquele ano-base.
+
+Titulação
+: Conclusão do curso, com a defesa da dissertação (mestrado) ou da tese (doutorado).
+  O **tempo de titulação** é o número de meses entre a matrícula e a titulação.
+
+## Produção discente
+
+Tese e dissertação
+: Trabalhos finais do doutorado (tese) e do mestrado (dissertação), registrados no
+  **Catálogo de Teses e Dissertações** da CAPES.
+
+## Termos desta base
+
+Indicador
+: Um número com definição, fórmula e fonte documentadas no
+  [catálogo](indicadores.qmd). Cada um é calculado por ano e por recorte.
+
+Recorte
+: Subconjunto em que o indicador é recalculado: região, UF, grande área, área de
+  avaliação, modalidade, dependência administrativa ou nota do programa. Razões são
+  recalculadas em cada recorte (nunca média de médias).
+
+Ponto percentual (p.p.)
+: Diferença entre dois percentuais. Passar de 30% para 38,5% é uma alta de 8,5 p.p.
+  (e de 28% em termos relativos).

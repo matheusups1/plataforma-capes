@@ -1,0 +1,31 @@
+---
+title: "Docentes"
+subtitle: "Quem ensina e orienta na pós-graduação: categorias, titulação e reconhecimento em pesquisa."
+---
+
+```{python}
+import kb
+MODULO = "03-docentes"
+```
+
+## Conceitos
+
+Cada programa declara seu corpo docente em três categorias. Os **permanentes** são o núcleo estável e a base da avaliação. Os **colaboradores** participam de forma complementar, e os **visitantes** atuam por tempo determinado. Uma mesma pessoa pode atuar em mais de um programa.
+
+Termos destacados estão no [glossário](../../glossario.qmd).
+
+## Indicadores do módulo
+
+```{python}
+#| output: asis
+print(kb.grade_tiles(kb.indicadores(MODULO), link_catalogo="../../indicadores.html"))
+```
+
+Definições, fórmulas e limitações no [catálogo de indicadores](../../indicadores.qmd#mod-03-docentes).
+
+## Exploração dos dados
+
+::: {.callout-note appearance="simple"}
+Em construção: análise exploratória por região, área e tipo de instituição, com
+insights do módulo.
+:::

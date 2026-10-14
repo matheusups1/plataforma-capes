@@ -1,0 +1,91 @@
+---
+title: Metodologia
+subtitle: De onde vêm os números, como são processados e quais decisões foram tomadas.
+---
+
+```{python}
+import kb
+```
+
+## Pipeline
+
+Os dados percorrem cinco camadas, todas reprodutíveis a partir do repositório:
+
+1. **Raw** — os CSVs originais, baixados do portal via API (as URLs são resolvidas a cada
+   execução). Cada arquivo tem seu checksum SHA-256 registrado.
+2. **Bronze** — os mesmos dados convertidos para Parquet, sem nenhuma transformação de
+   conteúdo: todas as colunas como texto, nomes originais.
+3. **Staging** — tipagem, harmonização das colunas que mudam entre períodos de coleta,
+   remoção de duplicatas e **remoção de dados pessoais**.
+4. **Marts** — fatos agregados por programa e ano e os indicadores em formato longo
+   (indicador × ano × recorte).
+5. **Publicação** — um arquivo SQLite só com agregados e o catálogo de indicadores,
+   lido por este site.
+
+Cada execução roda testes automáticos de qualidade (chaves únicas, domínios válidos,
+percentuais entre 0 e 100) e de coerência entre fontes.
+
+## Fontes
+
+```{python}
+#| output: asis
+rows = kb.consulta("""
+    select dataset, min(ano) as de, max(ano) as ate, count(*) as arquivos, sum(linhas) as linhas
+    from fonte group by dataset order by linhas desc
+""")
+nomes = {
+    "programas": "Programas da pós-graduação stricto sensu",
+    "cursos": "Cursos da pós-graduação stricto sensu",
+    "docentes": "Docentes da pós-graduação stricto sensu",
+    "discentes": "Discentes da pós-graduação stricto sensu",
+    "teses": "Catálogo de teses e dissertações",
+}
+print("\n| Conjunto de dados | Período | Arquivos | Registros |\n|---|---|--:|--:|")
+for r in rows:
+    print(f"| {nomes.get(r['dataset'], r['dataset'])} | {r['de']}–{r['ate']} | {r['arquivos']} | {kb.fmt(r['linhas'], 'contagem')} |")
+total = sum(r["linhas"] for r in rows)
+print(f"| **Total** | | **{sum(r['arquivos'] for r in rows)}** | **{kb.fmt(total, 'contagem')}** |\n")
+print(f'\n<p class="kb-muted">Processado em {kb.metadado("gerado_em")[:10]}. '
+      'Fonte: <a href="https://dadosabertos.capes.gov.br">dadosabertos.capes.gov.br</a>.</p>\n')
+```
+
+## Decisões de tratamento
+
+Achados nos dados de origem e como foram tratados:
+
+- **Codificação.** O portal declara os arquivos como latin-1, mas parte deles usa
+  caracteres do Windows-1252 (como o travessão "–"). Os arquivos são lidos como cp1252.
+- **Colunas que mudam entre períodos.** Os períodos 2013–2016, 2017–2020 e 2021–2024
+  têm leiautes diferentes (ex.: o ano de início do programa muda de nome em 2017).
+  As colunas são unificadas no staging.
+- **Três formatos de data**, às vezes no mesmo arquivo (`01MAR2017`, `04APR13`,
+  `17/12/2014`). O formato é escolhido pelo tamanho do texto, para não confundir um
+  ano de dois dígitos com o ano 13 d.C.
+- **Duplicatas.** 3.194 registros de docentes repetidos em 2017–2019 e 2 de discentes
+  foram reduzidos a um.
+- **Nomes de áreas.** Nove áreas de avaliação mudaram de nome no período; o código é
+  estável e usamos o nome mais recente.
+- **Coerência entre fontes.** O número de titulados em *Discentes* e o de trabalhos no
+  *Catálogo de Teses* coincidem ano a ano (diferença de 1 trabalho em 2015). O pipeline
+  falha se a divergência passar de 0,1%.
+- **Indicador descartado.** O campo de "texto completo" do catálogo de teses aponta
+  sempre para a ficha do trabalho na Plataforma Sucupira, e não para o texto. Por isso
+  não há indicador de acesso aberto.
+
+## Privacidade
+
+Os dados abertos de docentes e discentes incluem nomes e documentos parcialmente
+mascarados. Esta base **descarta nomes, documentos, títulos de trabalhos de discentes e
+nomes de orientadores** já na primeira transformação. Apenas um identificador
+numérico, atribuído pela própria CAPES, é usado para contar pessoas distintas. Ele nunca
+é publicado. O arquivo de dados deste site contém somente agregados por programa,
+instituição, área e recorte.
+
+## Limitações gerais
+
+- **Ano-base não é ano civil exato.** Os dados refletem o que os programas informaram na
+  coleta daquele ano.
+- **Notas mudam em degraus.** A nota de um programa só muda após cada avaliação
+  quadrienal, então a série de notas avança em degraus.
+- **Fluxo anual, não de coorte.** Os indicadores de discentes descrevem o que aconteceu no
+  ano. Eles não dizem que fração de uma turma de ingressantes conclui o curso.

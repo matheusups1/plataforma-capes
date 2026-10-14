@@ -18,8 +18,12 @@ CKAN API ──ingest──▶ data/raw (CSV cp1252) ──bronze──▶ data/
   deduplicação e remoção de dados pessoais (nomes/documentos nunca saem do bronze).
 - **marts** (`transform/models/marts`, tabelas em `data/capes.duckdb`): dimensões e fatos.
   Testes de qualidade e de coerência entre fontes rodam no `dbt build`.
+- **indicadores**: catálogo em [indicators/indicadores.yml](indicators/indicadores.yml)
+  (fonte única da documentação) → `mart_indicador_valor` (indicador × ano × recorte).
+- **publicação**: `data/capes_kb.sqlite` só com agregados e o catálogo; lido pelo site
+  Quarto em `site/` (saída em `site/_site`).
 
-Os dados (`data/raw`, `data/bronze`) não são versionados; os manifests são.
+Os dados (`data/raw`, `data/bronze`, `*.duckdb`, `*.sqlite`) não são versionados; os manifests são.
 
 ## Uso
 
@@ -32,6 +36,9 @@ uv run capes ingest               # todos os datasets de config/datasets.yml
 uv run capes perfil discentes     # registros por ano e colunas que mudam entre anos
 uv run capes transform            # dbt build: modelos + testes
 uv run capes transform -- docs generate   # qualquer comando dbt após --
+uv run capes export               # marts → data/capes_kb.sqlite
+uv run capes site                 # renderiza o site (Quarto instalado via uv, no .venv)
+uv run capes site -- preview      # servidor local com recarga
 uv run pytest                     # testes unitários (offline)
 ```
 

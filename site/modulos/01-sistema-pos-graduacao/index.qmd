@@ -1,0 +1,31 @@
+---
+title: "Sistema de pós-graduação"
+subtitle: "Como o mestrado e o doutorado estão organizados no Brasil e como o sistema cresceu."
+---
+
+```{python}
+import kb
+MODULO = "01-sistema-pos-graduacao"
+```
+
+## Conceitos
+
+A pós-graduação *stricto sensu* é organizada em **programas**, cada um vinculado a uma instituição e a uma área de avaliação. Um programa oferece um ou mais **cursos**: mestrado, doutorado ou suas versões profissionais. Todo ano os programas informam seus dados à CAPES pela Plataforma Sucupira. Esses registros anuais são a matéria-prima desta base.
+
+Termos destacados estão no [glossário](../../glossario.qmd).
+
+## Indicadores do módulo
+
+```{python}
+#| output: asis
+print(kb.grade_tiles(kb.indicadores(MODULO), link_catalogo="../../indicadores.html"))
+```
+
+Definições, fórmulas e limitações no [catálogo de indicadores](../../indicadores.qmd#mod-01-sistema-pos-graduacao).
+
+## Exploração dos dados
+
+::: {.callout-note appearance="simple"}
+Em construção: análise exploratória por região, área e tipo de instituição, com
+insights do módulo.
+:::

@@ -3,6 +3,8 @@ data/raw/
 data/bronze/
 data/*.duckdb
 data/*.duckdb.wal
+# artefato publicado: regenerado por `capes export` (muda a cada execução)
+data/*.sqlite
 
 # python
 .venv/

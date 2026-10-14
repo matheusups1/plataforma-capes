@@ -1,0 +1,31 @@
+---
+title: "Discentes e titulação"
+subtitle: "Quem entra, quem se titula, quem sai e quanto tempo leva até o diploma."
+---
+
+```{python}
+import kb
+MODULO = "04-discentes-e-titulacao"
+```
+
+## Conceitos
+
+A cada ano, todo discente vinculado a um programa tem uma **situação**: segue matriculado, titulou-se, foi desligado, abandonou ou mudou de nível sem defesa. Essas situações permitem medir o fluxo anual de entrada e saída e o tempo médio entre a matrícula e a titulação.
+
+Termos destacados estão no [glossário](../../glossario.qmd).
+
+## Indicadores do módulo
+
+```{python}
+#| output: asis
+print(kb.grade_tiles(kb.indicadores(MODULO), link_catalogo="../../indicadores.html"))
+```
+
+Definições, fórmulas e limitações no [catálogo de indicadores](../../indicadores.qmd#mod-04-discentes-e-titulacao).
+
+## Exploração dos dados
+
+::: {.callout-note appearance="simple"}
+Em construção: análise exploratória por região, área e tipo de instituição, com
+insights do módulo.
+:::

@@ -1,0 +1,31 @@
+---
+title: "Programas e avaliação"
+subtitle: "A avaliação CAPES, a escala de notas e a distribuição da qualidade pelo país."
+---
+
+```{python}
+import kb
+MODULO = "02-programas-e-avaliacao"
+```
+
+## Conceitos
+
+A cada quatro anos a CAPES avalia todos os programas e atribui uma **nota de 1 a 7**. A nota 3 é o mínimo para funcionar. As notas 6 e 7 indicam padrão internacional e só são possíveis para programas com doutorado. A nota define se o programa pode continuar, se pode abrir doutorado e quanto recebe de fomento.
+
+Termos destacados estão no [glossário](../../glossario.qmd).
+
+## Indicadores do módulo
+
+```{python}
+#| output: asis
+print(kb.grade_tiles(kb.indicadores(MODULO), link_catalogo="../../indicadores.html"))
+```
+
+Definições, fórmulas e limitações no [catálogo de indicadores](../../indicadores.qmd#mod-02-programas-e-avaliacao).
+
+## Exploração dos dados
+
+::: {.callout-note appearance="simple"}
+Em construção: análise exploratória por região, área e tipo de instituição, com
+insights do módulo.
+:::

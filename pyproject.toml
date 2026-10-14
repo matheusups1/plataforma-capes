@@ -16,6 +16,11 @@ capes = "capes_kb.cli:main"
 
 [dependency-groups]
 dev = ["pytest>=8"]
+site = [
+    "jupyter>=1.1.1",
+    "plotly>=7.1.0",
+    "quarto-cli>=1.10.19",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -28,3 +33,6 @@ packages = ["src/capes_kb"]
 testpaths = ["tests"]
 markers = ["network: testes que acessam o portal da CAPES (rodar com -m network)"]
 addopts = "-m 'not network'"
+
+[tool.uv]
+default-groups = ["dev", "site"]

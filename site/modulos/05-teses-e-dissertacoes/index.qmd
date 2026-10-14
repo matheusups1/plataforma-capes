@@ -1,0 +1,31 @@
+---
+title: "Teses e dissertações"
+subtitle: "O que se defende na pós-graduação brasileira, em que língua e em quais áreas."
+---
+
+```{python}
+import kb
+MODULO = "05-teses-e-dissertacoes"
+```
+
+## Conceitos
+
+Todo mestrado termina com uma **dissertação** e todo doutorado com uma **tese**, registradas no Catálogo de Teses e Dissertações da CAPES. O catálogo traz área, palavras-chave, idioma e número de páginas de cada trabalho. Com ele dá para acompanhar temas e a internacionalização da produção discente.
+
+Termos destacados estão no [glossário](../../glossario.qmd).
+
+## Indicadores do módulo
+
+```{python}
+#| output: asis
+print(kb.grade_tiles(kb.indicadores(MODULO), link_catalogo="../../indicadores.html"))
+```
+
+Definições, fórmulas e limitações no [catálogo de indicadores](../../indicadores.qmd#mod-05-teses-e-dissertacoes).
+
+## Exploração dos dados
+
+::: {.callout-note appearance="simple"}
+Em construção: análise exploratória por região, área e tipo de instituição, com
+insights do módulo.
+:::

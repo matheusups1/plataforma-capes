@@ -1,0 +1,62 @@
+---
+title: Pós-graduação em dados
+subtitle: Uma base de conhecimento sobre o mestrado e o doutorado no Brasil, construída a partir dos dados abertos da CAPES.
+toc: false
+---
+
+```{python}
+import kb
+```
+
+::: {.kb-lead}
+Quantos programas existem, quem ensina, quantos se titulam e o que se pesquisa. Cada
+número tem definição, fórmula e fonte documentadas, e é recalculado por região, área
+e tipo de instituição.
+:::
+
+## O sistema em 2024
+
+```{python}
+#| output: asis
+destaques = ["prog_total", "doc_total", "disc_matriculados", "disc_titulados", "disc_titulados_doutorado"]
+print(kb.grade_tiles([kb.indicador(i) for i in destaques], link_catalogo="indicadores.html"))
+```
+
+## Módulos
+
+Cada módulo explica os conceitos de um tema, explora os dados e documenta seus indicadores.
+
+```{python}
+#| output: asis
+descricoes = {
+    "01-sistema-pos-graduacao": "Como a pós-graduação está organizada e como cresceu.",
+    "02-programas-e-avaliacao": "A avaliação CAPES, as notas e onde estão os melhores programas.",
+    "03-docentes": "Quem ensina e orienta: categorias, titulação e bolsas.",
+    "04-discentes-e-titulacao": "Ingresso, titulação, desligamento e tempo até o diploma.",
+    "05-teses-e-dissertacoes": "O que se defende, em que língua e em quais áreas.",
+}
+cards = "".join(
+    f'<a href="modulos/{m["modulo"]}/index.html">'
+    f'<span class="kb-num">{m["modulo"][:2]}</span>'
+    f'<span class="kb-nome">{m["nome"]}</span>'
+    f'<span class="kb-desc">{descricoes.get(m["modulo"], "")}</span></a>'
+    for m in kb.modulos()
+)
+print(f'\n<div class="kb-modulos">{cards}</div>\n')
+```
+
+## Como esta base funciona
+
+- **Fonte única:** todos os números vêm dos [dados abertos da CAPES](https://dadosabertos.capes.gov.br),
+  coleta 2013–2024, processados por um pipeline reprodutível. Veja a [metodologia](metodologia.qmd).
+- **Indicadores documentados:** o [catálogo](indicadores.qmd) traz definição, fórmula,
+  limitações e a série histórica de cada indicador.
+- **Vocabulário:** termos como *programa*, *nota CAPES* e *docente permanente* estão no
+  [glossário](glossario.qmd).
+- **Privacidade:** a base publica apenas agregados. Nomes e documentos de pessoas,
+  presentes nos dados de origem, são descartados no processamento.
+
+```{python}
+#| output: asis
+print(f'\n<p class="kb-muted">Dados processados em {kb.metadado("gerado_em")[:10]}.</p>\n')
+```

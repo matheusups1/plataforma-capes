@@ -1,0 +1,49 @@
+---
+title: Catálogo de indicadores
+subtitle: Definição, fórmula, fonte e limitações de cada número publicado nesta base.
+---
+
+```{python}
+import kb
+```
+
+Todo número que aparece nos módulos vem deste catálogo. Cada indicador é calculado
+para **cada ano de 2013 a 2024** e para o Brasil e oito recortes: região, UF, grande área,
+área de avaliação, modalidade, dependência administrativa e nota do programa.
+Aqui mostramos o valor nacional; os recortes aparecem nos módulos.
+
+::: {.callout-note appearance="simple"}
+**Como ler a variação.** Percentuais variam em *pontos percentuais* (p.p.); as demais
+grandezas, em %. A seta indica direção, não juízo de valor: um tempo de titulação
+maior é uma alta, mas não uma melhora. Passe o cursor sobre a linha para ver cada ano.
+:::
+
+```{python}
+#| output: asis
+for m in kb.modulos():
+    inds = kb.indicadores(m["modulo"])
+    print(f"\n## {m['nome']} {{#mod-{m['modulo']}}}\n")
+    print(f"[Abrir o módulo →](modulos/{m['modulo']}/index.qmd)\n")
+    for i in inds:
+        print(f"\n### {i['nome']} {{#ind-{i['indicador_id']}}}\n")
+        fontes = "".join(f'<span class="kb-chip">{f}</span>' for f in i["fontes"].split(","))
+        extras = ""
+        if i["interpretacao"]:
+            extras += f"<dt>Como interpretar</dt><dd>{i['interpretacao']}</dd>"
+        if i["limitacoes"]:
+            extras += f"<dt>Limitações</dt><dd>{i['limitacoes']}</dd>"
+        print(
+            '\n<div class="kb-indicador">'
+            f"{kb.stat_tile(i)}"
+            "<div>"
+            '<dl class="kb-ficha">'
+            f"<dt>Definição</dt><dd>{i['definicao']}</dd>"
+            f"<dt>Fórmula</dt><dd><code>{i['formula']}</code></dd>"
+            f"<dt>Unidade · fontes</dt><dd>{i['unidade']} · {fontes}</dd>"
+            f"{extras}"
+            f"<dt>Identificador</dt><dd><code>{i['indicador_id']}</code> · modelo <code>{i['modelo_dbt']}</code></dd>"
+            "</dl>"
+            f"{kb.tabela_serie(i)}"
+            "</div></div>\n"
+        )
+```

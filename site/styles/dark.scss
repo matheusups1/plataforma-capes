@@ -1,0 +1,16 @@
+/*-- scss:defaults --*/
+$body-bg: #1a1a19;
+$body-color: #ffffff;
+$link-color: #6da7ec;
+
+/*-- scss:rules --*/
+:root {
+  --kb-surface: #1a1a19;
+  --kb-surface-raised: #222221;
+  --kb-text: #ffffff;
+  --kb-text-secondary: #c3c2b7;
+  --kb-text-muted: #9a9890;
+  --kb-border: #383835;
+  --kb-link: #6da7ec;
+  --viz-accent: #3987e5;   // validado: contraste ≥ 3:1 sobre #1a1a19
+}

@@ -1,0 +1,54 @@
+project:
+  type: website
+  output-dir: _site
+  execute-dir: project   # kb.py e caminhos relativos a site/, qualquer que seja a página
+
+lang: pt-BR
+
+website:
+  title: "Pós-graduação em dados"
+  description: >
+    Base de conhecimento sobre a pós-graduação stricto sensu brasileira,
+    construída a partir dos dados abertos da CAPES.
+  page-navigation: true
+  navbar:
+    left:
+      - href: index.qmd
+        text: Início
+      - text: Módulos
+        menu:
+          - href: modulos/01-sistema-pos-graduacao/index.qmd
+            text: "01 · Sistema de pós-graduação"
+          - href: modulos/02-programas-e-avaliacao/index.qmd
+            text: "02 · Programas e avaliação"
+          - href: modulos/03-docentes/index.qmd
+            text: "03 · Docentes"
+          - href: modulos/04-discentes-e-titulacao/index.qmd
+            text: "04 · Discentes e titulação"
+          - href: modulos/05-teses-e-dissertacoes/index.qmd
+            text: "05 · Teses e dissertações"
+      - href: indicadores.qmd
+        text: Indicadores
+      - href: glossario.qmd
+        text: Glossário
+      - href: metodologia.qmd
+        text: Metodologia
+  page-footer:
+    left: >
+      Projeto independente, sem vínculo oficial com a CAPES.
+      Fonte: [Dados Abertos CAPES](https://dadosabertos.capes.gov.br).
+    right: "[Metodologia](/metodologia.qmd)"
+
+format:
+  html:
+    theme:
+      light: [cosmo, styles/kb.scss, styles/light.scss]
+      dark: [cosmo, styles/kb.scss, styles/dark.scss]
+    toc: true
+    toc-title: Nesta página
+    anchor-sections: true
+
+execute:
+  echo: false
+  warning: false
+  daemon: false   # sem isso o processo do quarto fica preso após renderizar (Windows)

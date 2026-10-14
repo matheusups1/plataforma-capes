@@ -38,7 +38,8 @@ TABELAS = {
 
 INDICES = {
     "indicador_valor": ["indicador_id, recorte_tipo, ano"],
-    "programa_ano": ["ano", "cd_programa"],
+    # composto: as páginas cruzam programa × ano consecutivo (entradas, saídas, mudanças de nota)
+    "programa_ano": ["cd_programa, ano", "ano"],
     "discentes_programa_ano": ["cd_programa, ano"],
 }
 

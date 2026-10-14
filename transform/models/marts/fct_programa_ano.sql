@@ -1,11 +1,13 @@
 -- Grão: programa × ano-base. Base para indicadores dos módulos 01 e 02.
 select
-    ano,
+    p.ano,
     cd_programa,
     cd_ies,
     cd_area_avaliacao,
     regiao,
-    uf,
+    p.uf,
+    municipio,
+    c.capital is not null as em_capital,
     status_juridico,
     dependencia_adm,
     modalidade,
@@ -17,4 +19,7 @@ select
     ano_inicio,
     em_rede,
     situacao
-from {{ ref('stg_programas') }}
+from {{ ref('stg_programas') }} p
+-- comparação sem acento: a grafia do município na fonte nem sempre traz acentos
+left join {{ ref('capitais') }} c
+    on c.uf = p.uf and strip_accents(c.capital) = strip_accents(p.municipio)

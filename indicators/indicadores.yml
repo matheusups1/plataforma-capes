@@ -65,6 +65,26 @@ indicadores:
     fontes: [programas]
     modelo_dbt: mart_ind_01_sistema
 
+  municipios_total:
+    nome: Municípios com pós-graduação
+    modulo: 01-sistema-pos-graduacao
+    definicao: Número de municípios que sediam pelo menos um programa no ano-base.
+    formula: count(distinct município do programa)
+    unidade: contagem
+    fontes: [programas]
+    modelo_dbt: mart_ind_01_sistema
+    limitacoes: Usa o município sede informado pelo programa; programas em rede contam uma vez.
+
+  prog_pct_fora_capitais:
+    nome: Programas fora das capitais
+    modulo: 01-sistema-pos-graduacao
+    definicao: Percentual dos programas sediados em municípios que não são capital de UF.
+    formula: 100 × programas fora das capitais / programas
+    unidade: percentual
+    fontes: [programas]
+    modelo_dbt: mart_ind_01_sistema
+    interpretacao: Proxy da interiorização da pós-graduação.
+
   # ── 02 Programas e avaliação ────────────────────────────────────────────────
   prog_pct_nota_5_mais:
     nome: Programas com nota 5 ou mais

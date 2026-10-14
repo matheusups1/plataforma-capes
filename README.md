@@ -14,7 +14,10 @@ CKAN API ──ingest──▶ data/raw (CSV cp1252) ──bronze──▶ data/
 - **raw**: CSVs originais, nunca editados. Checksums em `data/manifest/raw.json`.
 - **bronze**: Parquet 1:1 com a fonte (todas as colunas texto + `_ano`, `_resource_id`),
   particionado em `data/bronze/<dataset>/ano=<AAAA>/`. Registro em `data/manifest/bronze.json`.
-- **staging/marts** (próxima fase): tipagem, harmonização entre períodos e indicadores via dbt.
+- **staging** (`transform/models/staging`, views dbt): tipagem, harmonização entre períodos,
+  deduplicação e remoção de dados pessoais (nomes/documentos nunca saem do bronze).
+- **marts** (`transform/models/marts`, tabelas em `data/capes.duckdb`): dimensões e fatos.
+  Testes de qualidade e de coerência entre fontes rodam no `dbt build`.
 
 Os dados (`data/raw`, `data/bronze`) não são versionados; os manifests são.
 
@@ -27,6 +30,8 @@ uv sync
 uv run capes all programas        # baixa, converte e mostra o perfil
 uv run capes ingest               # todos os datasets de config/datasets.yml
 uv run capes perfil discentes     # registros por ano e colunas que mudam entre anos
+uv run capes transform            # dbt build: modelos + testes
+uv run capes transform -- docs generate   # qualquer comando dbt após --
 uv run pytest                     # testes unitários (offline)
 ```
 

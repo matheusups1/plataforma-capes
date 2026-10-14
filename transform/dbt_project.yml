@@ -1,0 +1,16 @@
+name: capes_kb
+version: "0.1.0"
+profile: capes_kb
+config-version: 2
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+
+models:
+  capes_kb:
+    staging:
+      +materialized: view   # leitura direta do Parquet bronze, sem cópia
+    marts:
+      +materialized: table

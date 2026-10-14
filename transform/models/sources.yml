@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: Parquet 1:1 com os CSVs do portal (todas as colunas VARCHAR + _ano, _resource_id).
+    meta:
+      external_location: "read_parquet('{{ env_var('CAPES_BRONZE_DIR') }}/{name}/*/*.parquet', union_by_name=true, hive_partitioning=false)"
+    tables:
+      - name: programas
+      - name: cursos
+      - name: docentes
+      - name: discentes
+      - name: teses

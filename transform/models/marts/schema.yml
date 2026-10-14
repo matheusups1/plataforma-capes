@@ -1,0 +1,30 @@
+version: 2
+
+models:
+  - name: dim_area_avaliacao
+    description: Áreas de avaliação da CAPES, com nome vigente e nomes históricos.
+    columns:
+      - name: cd_area_avaliacao
+        tests: [unique, not_null]
+      - name: nm_area_avaliacao
+        tests: [not_null]
+
+  - name: dim_ies
+    description: Instituições de ensino com programas de pós-graduação (atributos mais recentes).
+    columns:
+      - name: cd_ies
+        tests: [unique, not_null]
+
+  - name: fct_programa_ano
+    description: Programas por ano-base, com atributos daquele ano. Grão programa × ano.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [cd_programa, ano]
+    columns:
+      - name: cd_ies
+        tests:
+          - relationships: {arguments: {to: ref('dim_ies'), field: cd_ies}}
+      - name: cd_area_avaliacao
+        tests:
+          - relationships: {arguments: {to: ref('dim_area_avaliacao'), field: cd_area_avaliacao}}

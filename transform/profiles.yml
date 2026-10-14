@@ -1,0 +1,8 @@
+# Caminhos absolutos são injetados pela CLI (`uv run capes transform`).
+capes_kb:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('CAPES_DUCKDB_PATH') }}"
+      threads: 4

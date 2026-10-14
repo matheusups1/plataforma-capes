@@ -26,6 +26,11 @@ def ticks(lo: float, hi: float, alvo: int = 5) -> list[float]:
     return [round(ini + i * passo, 10) for i in range(n + 1)]
 
 
+def _min_largura(w: float) -> int:
+    """Largura mínima em px para o texto de 12 unidades não ficar abaixo de ~11px em telas estreitas."""
+    return round(w * 520 / 560)
+
+
 def _num_eixo(v: float, unidade: str) -> str:
     """Marcas de eixo inteiras sem casas decimais ("50%", "4.000")."""
     if float(v).is_integer():
@@ -43,12 +48,16 @@ def legenda(itens: list[tuple[str, str]]) -> str:
 
 
 def linhas(series: list[tuple[str, list[tuple[int, float]]]], unidade: str,
-           zero: bool = True, rotulo: str = "") -> str:
+           zero: bool = True, rotulo: str = "", x_marcas: list[int] | None = None, x_sufixo: str = "",
+           valor_no_rotulo: bool = True) -> str:
     """Séries temporais: linha 2px, rótulo direto no fim (com guia se precisou deslocar),
     alvo de hover por ponto e legenda (sempre que houver ≥ 2 séries)."""
-    W, H, ml, mr, mt, mb = 560, 260, 52, 128, 12, 26
-    anos = sorted({a for _, pts in series for a, _ in pts})
     vals = [v for _, pts in series for _, v in pts if v is not None]
+    # margem direita cresce com o rótulo direto mais longo (~0,6 em de largura por caractere)
+    maior = max(len(n) + (len(fmt(pts[-1][1], unidade)) + 1 if valor_no_rotulo else 0) for n, pts in series)
+    W, H, ml, mr, mt, mb = 560, 260, 52, max(128, round(0.6 * 12 * maior) + 20), 12, 26
+    W += mr - 128   # mantém a área de plotagem; o SVG fica mais largo
+    anos = sorted({a for _, pts in series for a, _ in pts})
     marcas = ticks(0 if zero else min(vals), max(vals))
     y0, y1 = marcas[0], marcas[-1]
 
@@ -62,9 +71,9 @@ def linhas(series: list[tuple[str, list[tuple[int, float]]]], unidade: str,
     for m in marcas:
         partes.append(f'<line class="viz-grade" x1="{ml}" x2="{W - mr}" y1="{y(m):.1f}" y2="{y(m):.1f}"/>')
         partes.append(f'<text class="viz-eixo" x="{ml - 6}" y="{y(m) + 4:.1f}" text-anchor="end">{_num_eixo(m, unidade)}</text>')
-    for a in anos:
-        if a in (anos[0], anos[-1]) or len(anos) <= 12:
-            partes.append(f'<text class="viz-eixo" x="{x(a):.1f}" y="{H - 6}" text-anchor="middle">{a}</text>')
+    marcas_x = x_marcas if x_marcas is not None else (anos if len(anos) <= 13 else [anos[0], anos[-1]])
+    for a in marcas_x:
+        partes.append(f'<text class="viz-eixo" x="{x(a):.1f}" y="{H - 6}" text-anchor="middle">{a}</text>')
 
     fins = []
     for i, (nome, pts) in enumerate(series):
@@ -77,7 +86,7 @@ def linhas(series: list[tuple[str, list[tuple[int, float]]]], unidade: str,
         for a, v in pts:
             partes.append(
                 f'<circle class="viz-hit" cx="{x(a):.1f}" cy="{y(v):.1f}" r="7">'
-                f"<title>{html.escape(nome)} · {a}: {html.escape(fmt(v, unidade))}</title></circle>"
+                f"<title>{html.escape(nome)} · {a}{x_sufixo}: {html.escape(fmt(v, unidade))}</title></circle>"
             )
         fins.append([y(v_fim), y(v_fim), nome, v_fim])
 
@@ -95,12 +104,14 @@ def linhas(series: list[tuple[str, list[tuple[int, float]]]], unidade: str,
             partes.append(f'<line class="viz-guia" x1="{xf + 4}" y1="{y_real:.1f}" x2="{xf + 12}" y2="{y_rot:.1f}"/>')
         partes.append(
             f'<text class="viz-rotulo-fim" x="{xf + 14}" y="{y_rot + 4:.1f}">'
-            f"{html.escape(nome)} <tspan class=\"viz-rotulo-valor\">{html.escape(fmt(v, unidade))}</tspan></text>"
+            f"{html.escape(nome)}"
+            + (f' <tspan class="viz-rotulo-valor">{html.escape(fmt(v, unidade))}</tspan>' if valor_no_rotulo else "")
+            + "</text>"
         )
 
     leg = legenda([(n, CATEGORICA[i % len(CATEGORICA)]) for i, (n, _) in enumerate(series)]) if len(series) > 1 else ""
     aria = html.escape(rotulo or ", ".join(n for n, _ in series))
-    svg = f'<svg class="viz-grafico" viewBox="0 0 {W} {H}" role="img" aria-label="{aria}">{"".join(partes)}</svg>'
+    svg = f'<svg class="viz-grafico" viewBox="0 0 {W} {H}" style="min-width:{_min_largura(W)}px" role="img" aria-label="{aria}">{"".join(partes)}</svg>'
     return f'<figure class="viz-fig">{leg}{svg}</figure>'
 
 
@@ -123,7 +134,8 @@ def barras_h(itens: list[tuple[str, float]], unidade: str, destaque: set[str] | 
 def colunas_empilhadas(anos: list[int], categorias: list[tuple[str, str]],
                        valores: dict[str, dict[int, float]], rotulo: str = "") -> str:
     """Colunas 100% empilhadas (composição por ano). Segmentos separados por 2px da superfície."""
-    W, H, ml, mr, mt, mb = 560, 240, 40, 8, 10, 26
+    duas_linhas = any(" " in str(a) for a in anos)
+    W, H, ml, mr, mt, mb = 560, 240 + (14 if duas_linhas else 0), 40, 8, 10, 26 + (14 if duas_linhas else 0)
     largura_col = (W - ml - mr) / len(anos)
     barra = largura_col * 0.72
     partes = []
@@ -145,9 +157,15 @@ def colunas_empilhadas(anos: list[int], categorias: list[tuple[str, str]],
                 f'<rect class="viz-segmento" x="{x0:.1f}" y="{base:.1f}" width="{barra:.1f}" height="{h:.1f}" style="fill:{cor}">'
                 f"<title>{a} · {html.escape(nome)}: {fmt(v, 'contagem')} ({fmt(100 * v / total, 'percentual')})</title></rect>"
             )
-        partes.append(f'<text class="viz-eixo" x="{x0 + barra / 2:.1f}" y="{H - 6}" text-anchor="middle">{str(a)[2:] if len(anos) > 8 else a}</text>')
+        xc = x0 + barra / 2
+        if duas_linhas and " " in str(a):
+            cima, baixo = str(a).rsplit(" ", 1)
+            partes.append(f'<text class="viz-eixo" x="{xc:.1f}" y="{H - 20}" text-anchor="middle">'
+                          f'<tspan x="{xc:.1f}">{html.escape(cima)}</tspan><tspan x="{xc:.1f}" dy="14">{html.escape(baixo)}</tspan></text>')
+        else:
+            partes.append(f'<text class="viz-eixo" x="{xc:.1f}" y="{H - 6}" text-anchor="middle">{str(a)[2:] if len(anos) > 8 else a}</text>')
     aria = html.escape(rotulo or "Composição por ano")
-    svg = f'<svg class="viz-grafico" viewBox="0 0 {W} {H}" role="img" aria-label="{aria}">{"".join(partes)}</svg>'
+    svg = f'<svg class="viz-grafico" viewBox="0 0 {W} {H}" style="min-width:{_min_largura(W)}px" role="img" aria-label="{aria}">{"".join(partes)}</svg>'
     return f'<figure class="viz-fig">{legenda(categorias)}{svg}</figure>'
 
 

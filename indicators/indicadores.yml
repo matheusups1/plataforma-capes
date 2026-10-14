@@ -282,6 +282,34 @@ indicadores:
     modelo_dbt: mart_ind_04_discentes
     interpretacao: A referência CAPES para o doutorado acadêmico é de 48 meses.
 
+  disc_pct_mestrado_no_prazo:
+    nome: Mestres titulados no prazo
+    modulo: 04-discentes-e-titulacao
+    definicao: >
+      Percentual dos mestres (acadêmicos) titulados no ano que concluíram em até 24 meses,
+      a duração de referência da bolsa de mestrado da CAPES.
+    formula: 100 × mestres titulados em ≤ 24 meses / mestres titulados com meses informados
+    unidade: percentual
+    fontes: [discentes]
+    modelo_dbt: mart_ind_04_discentes
+    limitacoes: >
+      Conta só quem titulou: quem ainda está matriculado após 24 meses não entra no
+      denominador até titular. Registros com 0 meses (0,1%) são descartados como erro.
+
+  disc_pct_doutorado_no_prazo:
+    nome: Doutores titulados no prazo
+    modulo: 04-discentes-e-titulacao
+    definicao: >
+      Percentual dos doutores (acadêmicos) titulados no ano que concluíram em até 48 meses,
+      a duração de referência da bolsa de doutorado da CAPES.
+    formula: 100 × doutores titulados em ≤ 48 meses / doutores titulados com meses informados
+    unidade: percentual
+    fontes: [discentes]
+    modelo_dbt: mart_ind_04_discentes
+    limitacoes: >
+      Conta só quem titulou no ano. Prorrogações (como as concedidas na pandemia) aparecem
+      aqui como titulações fora do prazo nos anos seguintes.
+
   disc_pct_estrangeiros:
     nome: Discentes estrangeiros
     modulo: 04-discentes-e-titulacao

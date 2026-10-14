@@ -52,3 +52,21 @@ models:
     columns:
       - name: soma_paginas
         description: Soma das páginas, desconsiderando valores fora de 1–2000 (erros de digitação).
+
+  - name: mart_titulacao_meses
+    description: Histograma de meses até a titulação (ano × nível × grande área; 120 = 120 ou mais).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [ano, nivel, grande_area, meses]
+    columns:
+      - name: meses
+        tests:
+          - dbt_utils.accepted_range: {arguments: {min_value: 1, max_value: 120}}
+
+  - name: mart_discentes_idade
+    description: Ingressantes e titulados por faixa de idade, ano e nível (agregado nacional).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [ano, nivel, evento, faixa_idade]

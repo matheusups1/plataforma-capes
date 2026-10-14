@@ -24,11 +24,15 @@ TABELAS = {
                          from dim_area_avaliacao order by cd_area_avaliacao""",
     "ies": "select * from dim_ies order by cd_ies",
     "programa_ano": "select * from fct_programa_ano order by cd_programa, ano",
+    "discentes_programa_ano": "select * from fct_discentes_programa_ano order by cd_programa, nivel, ano",
+    "titulacao_meses": "select * from mart_titulacao_meses order by ano, nivel, grande_area, meses",
+    "discentes_idade": "select * from mart_discentes_idade order by ano, nivel, evento, faixa_idade",
 }
 
 INDICES = {
     "indicador_valor": ["indicador_id, recorte_tipo, ano"],
     "programa_ano": ["ano", "cd_programa"],
+    "discentes_programa_ano": ["cd_programa, ano"],
 }
 
 _PESSOAL = re.compile(r"^(id_pessoa|nm_(docente|discente|orientador)|nr_documento|cpf|titulo)", re.IGNORECASE)

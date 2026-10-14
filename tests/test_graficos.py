@@ -68,3 +68,38 @@ def test_eixo_inteiro_sem_decimais(g):
     assert g._num_eixo(50, "percentual") == "50%"
     assert g._num_eixo(4000, "indice") == "4.000"
     assert g._num_eixo(2.5, "razao") == "2,5"
+
+
+def test_linhas_eixo_x_livre(g):
+    svg = g.linhas([("2024", [(m, 1.0) for m in range(24, 97)])], unidade="percentual",
+                   x_marcas=[24, 48, 72, 96], x_sufixo=" meses")
+    rotulos_x = [t for t in re.findall(r'text-anchor="middle">([^<]+)<', svg)]
+    assert rotulos_x == ["24", "48", "72", "96"]
+    assert "<title>2024 · 48 meses: 1,0%</title>" in svg
+
+
+def test_rotulo_sem_valor(g):
+    svg = g.linhas([("2013", [(24, 1.0), (96, 0.1)]), ("2024", [(24, 2.0), (96, 0.1)])], "percentual",
+                   valor_no_rotulo=False)
+    assert "viz-rotulo-valor" not in svg
+
+
+def test_margem_direita_acomoda_rotulo_longo(g):
+    nome = "Mestrado acadêmico (≤ 24 meses)"
+    svg = g.linhas([(nome, [(2013, 40.0), (2024, 36.1)])], "percentual")
+    largura = float(re.search(r'viewBox="0 0 ([\d.]+) ', svg).group(1))
+    x_rotulo = float(re.search(r'class="viz-rotulo-fim" x="([\d.]+)"', svg).group(1))
+    assert largura - x_rotulo >= 0.6 * 12 * len(nome + " 36,1%")
+
+
+def test_rotulo_de_coluna_quebra_em_duas_linhas(g):
+    svg = g.colunas_empilhadas(["Me. acad. 2013", "Dout. 2024"], [("x", "var(--viz-o1)")],
+                               {"x": {"Me. acad. 2013": 1, "Dout. 2024": 1}})
+    assert "<tspan" in svg and ">Me. acad.<" in svg and ">2013<" in svg
+
+
+def test_largura_minima_proporcional_ao_viewbox(g):
+    svg = g.linhas([("Mestrado acadêmico (≤ 24 meses)", [(2013, 40.0), (2024, 36.1)])], "percentual")
+    w = float(re.search(r'viewBox="0 0 ([\d.]+) ', svg).group(1))
+    minimo = float(re.search(r"min-width:(\d+)px", svg).group(1))
+    assert 12 * minimo / w >= 11

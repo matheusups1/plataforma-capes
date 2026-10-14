@@ -20,6 +20,11 @@ def duck(tmp_path):
             2013 as primeiro_ano, 2024 as ultimo_ano;
         create table dim_ies as select '10001018' as cd_ies, 'UNIR' as sg_ies;
         create table fct_programa_ano as select 2024 as ano, '10001018002P1' as cd_programa, true as em_rede;
+        create table fct_discentes_programa_ano as select 2024 as ano, '10001018002P1' as cd_programa,
+            'MESTRADO' as nivel, 10 as n_titulados;
+        create table mart_titulacao_meses as select 2024 as ano, 'MESTRADO' as nivel, 'X' as grande_area, 24 as meses, 5 as n;
+        create table mart_discentes_idade as select 2024 as ano, 'MESTRADO' as nivel, 'titulado' as evento,
+            '25 a 29' as faixa_idade, 5 as n;
     """)
     con.close()
     return path

@@ -136,7 +136,8 @@ h2 { margin-top: 2.5rem; padding-bottom: .3rem; border-bottom: 1px solid var(--k
 
 // ── gráficos dos módulos (site/graficos.py) ────────────────────────────────
 .viz-fig { margin: 1rem 0 .5rem; overflow-x: auto; }   // em telas estreitas o gráfico rola, a página não
-.viz-grafico { width: 100%; min-width: 520px; height: auto; display: block; overflow: visible; }  // texto ≥ ~11px
+.viz-grafico { width: 100%; height: auto;  // min-width vem inline (proporcional ao viewBox)
+  display: block; overflow: visible; }  // texto ≥ ~11px
 .viz-grafico text { font-family: inherit; font-size: 12px; }
 .viz-eixo { fill: var(--kb-text-muted); font-variant-numeric: tabular-nums; }
 .viz-grade { stroke: var(--viz-grade); stroke-width: 1px; shape-rendering: crispEdges; }

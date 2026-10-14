@@ -1,6 +1,10 @@
 # Pipeline completo + publicação no GitHub Pages.
 # Roda todo dia 5 (o portal da CAPES atualiza poucas vezes por ano) e sob demanda.
 # Baixa ~7 GB do portal; os CSVs de cada dataset são apagados após virar Parquet.
+#
+# O deploy no GitHub Pages só roda com a variável de repositório PUBLICAR_PAGES = true
+# (Pages exige repositório público no plano gratuito). Sem ela, o site renderizado fica
+# disponível como artefato "site" para download.
 name: Publicar
 
 on:
@@ -62,14 +66,24 @@ jobs:
           name: manifests
           path: data/manifest/
 
-      - uses: actions/configure-pages@v5
+      - name: Guardar o site renderizado
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: site/_site
+          retention-days: 90
 
-      - uses: actions/upload-pages-artifact@v3
+      - if: vars.PUBLICAR_PAGES == 'true'
+        uses: actions/configure-pages@v5
+
+      - if: vars.PUBLICAR_PAGES == 'true'
+        uses: actions/upload-pages-artifact@v3
         with:
           path: site/_site
 
   deploy:
     needs: pipeline
+    if: vars.PUBLICAR_PAGES == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

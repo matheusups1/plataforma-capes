@@ -54,5 +54,8 @@ Datasets e períodos ficam em [config/datasets.yml](config/datasets.yml).
 O SQLite publicado e os manifests de cada execução ficam como artefatos do workflow (90 dias).
 No runner, os CSVs de cada dataset são apagados logo após virar Parquet (`capes all --limpar-raw`).
 
-Configuração única no repositório: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+Enquanto o repositório for privado, o site renderizado fica como artefato `site` de cada execução.
+Para publicar no GitHub Pages (exige repositório público no plano gratuito):
+**Settings → Pages → Source: GitHub Actions** e **Settings → Secrets and variables → Actions →
+Variables → `PUBLICAR_PAGES` = `true`**.
 Para publicar fora do calendário: **Actions → Publicar → Run workflow**.

@@ -1,22 +1,21 @@
 # Plataforma CAPES — Base de Conhecimento
 
 Base de conhecimento minimalista sobre a pós-graduação stricto sensu brasileira,
-construída a partir dos [dados abertos da CAPES](https://dadosabertos.capes.gov.br),
+construída a partir dos [Dados Abertos da CAPES](https://dadosabertos.capes.gov.br),
 organizada em módulos (conceitos → EDA → insights → indicadores documentados).
 
 ## Arquitetura
 
 ```
-CKAN API ──ingest──▶ data/raw (CSV cp1252) ──bronze──▶ data/bronze (Parquet, VARCHAR)
-        ──dbt-duckdb──▶ staging/marts ──export──▶ data/capes_kb.sqlite ──Quarto──▶ site estático
+CKAN API ──ingest──▶ data/raw (CSV cp1252) ──bronze──▶ data/bronze (Parquet, VARCHAR)──dbt-duckdb──▶ staging/marts ──export──▶ data/capes_kb.sqlite ──Quarto──▶ site estático
 ```
 
 - **raw**: CSVs originais, nunca editados. Checksums em `data/manifest/raw.json`.
 - **bronze**: Parquet 1:1 com a fonte (todas as colunas texto + `_ano`, `_resource_id`),
   particionado em `data/bronze/<dataset>/ano=<AAAA>/`. Registro em `data/manifest/bronze.json`.
 - **staging** (`transform/models/staging`, views dbt): tipagem, harmonização entre períodos,
-  deduplicação e remoção de dados pessoais (nomes/documentos nunca saem do bronze).
-- **marts** (`transform/models/marts`, tabelas em `data/capes.duckdb`): dimensões e fatos.
+  deduplicação e remoção de dados pessoais.
+- **marts** (`transform/models/marts`, tabelas localizadas no database `data/capes.duckdb`): dimensões e fatos.
   Testes de qualidade e de coerência entre fontes rodam no `dbt build`.
 - **indicadores**: catálogo em [indicators/indicadores.yml](indicators/indicadores.yml)
   (fonte única da documentação) → `mart_indicador_valor` (indicador × ano × recorte).
@@ -27,7 +26,7 @@ Os dados (`data/raw`, `data/bronze`, `*.duckdb`, `*.sqlite`) não são versionad
 
 ## Uso
 
-Requer [uv](https://docs.astral.sh/uv/). Python 3.12 (dbt ainda não suporta 3.14).
+Requer [uv](https://docs.astral.sh/uv/). Python 3.12.
 
 ```bash
 uv sync
@@ -54,8 +53,3 @@ Datasets e períodos ficam em [config/datasets.yml](config/datasets.yml).
 O SQLite publicado e os manifests de cada execução ficam como artefatos do workflow (90 dias).
 No runner, os CSVs de cada dataset são apagados logo após virar Parquet (`capes all --limpar-raw`).
 
-Enquanto o repositório for privado, o site renderizado fica como artefato `site` de cada execução.
-Para publicar no GitHub Pages (exige repositório público no plano gratuito):
-**Settings → Pages → Source: GitHub Actions** e **Settings → Secrets and variables → Actions →
-Variables → `PUBLICAR_PAGES` = `true`**.
-Para publicar fora do calendário: **Actions → Publicar → Run workflow**.
